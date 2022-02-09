@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="icon" href="https://i.imgur.com/u1OSDAq.png">
+    <title>Questions</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script type="text/javascript" src="js/scripts.js" async></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous" async></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous" async></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.slim.js"
+            integrity="sha256-HwWONEZrpuoh951cQD1ov2HUK5zA5DwJ1DNUXaM6FsY=" crossorigin="anonymous" async></script>
+</head>
+<body>
+<!-- Demo header-->
+<section class="py-5 header text-center text-white">
+    <div class="container pt-4">
+        <header>
+            <h1 class="display-4">Danh sách câu hỏi của bạn</h1>
+            <p class="font-italic mb-1">Mỗi câu hỏi bạn đặt và các câu trả lời của nó có thể được tìm thấy tại đây</p>
+            <p class="font-italic"> Trang chủ của
+                <a class="text- text-white" href="https://www.facebook.com/lqdchatventure">
+                    <u>LQDChatventure</u>
+                </a>
+            </p>
+        </header>
+    </div>
+</section>
+
+
+<section>
+    <div class="container">
+        <div class="row" id="list_groups">
+
+
+        </div>
+    </div>
+</section>
+<script>
+    var questions_list = <%- questions_list %>;
+
+    var questions_list_groups = document.getElementById('list_groups');
+    updateList();
+
+    function updateList() {
+        var questions_list_groups_innerHTML = "<div class=\"col-lg-12 mx-auto\">\n" +
+            "<div class=\"card shadow border-0 mb-5\">\n" +
+            "                    <div class=\"card-body p-5\">\n" +
+            "                        <ul class=\"list-group\">";
+
+        if (questions_list.length === 0) {
+            questions_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                "    <h2 class=\"h4 mb-1\">Nope</h2>\n" +
+                "        <p class=\"small text-muted font-italic mb-4\">" + "You haven't" + "</p>";
+            "</li>"
+        } else {
+            for (let question in questions_list) {
+                let question_data = questions_list[question];
+                let link = "https://lqdchatventure-web.herokuapp.com/ans?id=" + question_data.mask_id + "&senderId=" + question_data.mask_sender_id;
+                questions_list_groups_innerHTML +=
+                    "<a href=\"" + link + "\" >" +
+                    "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                    "    <h2 class=\"h4 mb-1\ alas\">" + question_data.text + "</h2>\n" +
+                    " <div class=\"mb-2\"> &nbsp; </div>" +
+                    "        <p class=\"small text-muted font-italic mb-4\">" + question_data.author + " - " + timeConverter(question_data.timestamp) + "</p>\n";
+                "</li>" +
+                "<a/>"
+            }
+        }
+
+        questions_list_groups_innerHTML += "  </ul>\n" +
+            "            </div>\n" +
+            "        </div>" +
+            "</div>\n"
+
+        questions_list_groups.innerHTML = questions_list_groups_innerHTML;
+    }
+
+    function timeConverter(timestamp) {
+        var a = new Date(timestamp);
+        // var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // var year = a.getFullYear();
+        // var month = months[a.getMonth()];
+        // var date = a.getDate();
+        // var hour = a.getHours();
+        // var min = a.getMinutes();
+        // var sec = a.getSeconds();
+        // return date + " " + month + " " + year + " " + hour + ":" + min + ":" + sec;
+        return a.toLocaleString("vi-VN", {timeZone: "Asia/Ho_Chi_Minh"});
+    }
+</script>
+</body>
+<style>
+    .alas {
+        word-break: break-all;
+    }
+</style>
+</html>

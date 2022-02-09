@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="icon" href="https://i.imgur.com/u1OSDAq.png">
+    <title>Advance search</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script type="text/javascript" src="js/scripts.js" async></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous" async></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous" async></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.slim.js"
+            integrity="sha256-HwWONEZrpuoh951cQD1ov2HUK5zA5DwJ1DNUXaM6FsY=" crossorigin="anonymous" async></script>
+</head>
+<body>
+<!-- Demo header-->
+<section class="py-5 header text-center text-white">
+    <div class="container pt-4">
+        <header>
+            <h1 class="display-4">Tìm kiếm nâng cao</h1>
+            <p class="font-italic mb-1">Các lựa chọn tìm kiếm nâng cao</p>
+            <p class="font-italic"> Trang chủ của
+                <a class="text- text-white" href="https://www.facebook.com/lqdchatventure">
+                    <u>LQDChatventure</u>
+                </a>
+            </p>
+        </header>
+    </div>
+</section>
+
+
+<section>
+    <div class="container">
+        <div class="row" id="list_groups">
+
+
+        </div>
+    </div>
+</section>
+<script>
+    var tag_list = <%- tag_list %>;
+    var find_tags = <%- find_tags %>;
+    var senderId = <%- senderId %>;
+    var exclude_last_connected = <%- exclude_last_connected %>;
+    var find_gender = <%- find_gender %>
+    var age_range = <%- age_range %>
+    var check;
+
+    var advance_search_list_groups = document.getElementById('list_groups');
+
+    var advance_search_list_groups_innerHTML = "<div class=\"col-lg-7 mx-auto\">\n" +
+        "<div class=\"card shadow border-0 mb-5\">\n" +
+        "                    <div class=\"card-body p-5\">\n" +
+        "                        <h2 class=\"h4 mb-1\">Các lựa chọn tìm kiếm nâng cao</h2>\n" +
+        "                        <p class=\"small text-muted font-italic mb-4\">Tags, giới hạn độ tuổi, giới tính, loại bỏ " +
+        "đối tác gần nhất</p>\n" +
+        "                        <ul class=\"list-group\">";
+
+    for (let tag in tag_list) {
+        let tag_data = tag_list[tag];
+        if (find_tags.includes(tag)) {
+            check = "checked";
+            // console.log(tag, tags);
+        } else check = "";
+        advance_search_list_groups_innerHTML +=
+            "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
+            "                                <div class=\"custom-control custom-checkbox\">\n" +
+            "                                    <input class=\"custom-control-input\" id=\"" + tag + "FindCheckbox\" type=\"checkbox\"\n" +
+            "                                           name=\"customCheckbox\" " + check + ">\n" +
+            "                                    <label class=\"custom-control-label\" for=\"" + tag + "FindCheckbox\">\n" +
+            "                                        <p class=\"mb-0\">" + tag + "</p><span class=\"small font-italic text-muted\">" + tag_data['description'] + "</span>\n" +
+            "                                    </label>\n" +
+            "                                </div>\n" +
+            "                                <label for=\"" + tag + "FindCheckbox\"><img src=\"" + tag_data['img'] + "\"\n" +
+            "                                                                  alt=\"\"\n" +
+            "                                                                  width=\"60\"></label>\n" +
+            "                            </li>"
+    }
+
+    advance_search_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
+        "<div class=\"custom-control custom-switch\">\n" +
+        "  <input type=\"checkbox\" class=\"custom-control-input\" id=\"exclude_last_connected\" checked>\n" +
+        "  <label class=\"custom-control-label\" for=\"exclude_last_connected\">Không kết nối lại đối tác gần nhất</label>\n" +
+        "</div>" +
+        "</li>";
+
+    advance_search_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 align-items-center justify-content-between\">\n" +
+
+        "<input type=\"radio\" class=\"btn-check\" name=\"options-outlined\" id=\"find_gender_female\" autocomplete=\"off\">\n" +
+        "<label class=\"btn btn-outline-success\" for=\"find_gender_female\">Tìm kiếm nữ</label>\n" +
+
+        "<input type=\"radio\" class=\"btn-check\" name=\"options-outlined\" id=\"find_gender_male\" autocomplete=\"off\">\n" +
+        "<label class=\"btn btn-outline-success\" for=\"find_gender_male\">Tìm kiếm nam</label>\n" +
+
+        "<input type=\"radio\" class=\"btn-check\" name=\"options-outlined\" id=\"find_gender_null\" autocomplete=\"off\">\n" +
+        "<label class=\"btn btn-outline-primary\" for=\"find_gender_null\">Không chọn</label>" +
+
+        "</li>";
+
+    advance_search_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
+        "<div class=\"form-group\">\n" +
+        "    <label for=\"AgeRange\">Độ tuổi tìm kiếm</label>\n" +
+        "    <input type=\"number\" class=\"form-control\" id=\"ageRange0\" aria-describedby=\"emailHelp\" placeholder=\"Giới hạn tuổi thấp nhất\">\n" +
+        "    <input type=\"number\" class=\"form-control\" id=\"ageRange1\" aria-describedby=\"emailHelp\" placeholder=\"Giới hạn tuổi cao nhất\">\n" +
+        "    <small id=\"emailHelp\" class=\"form-text text-muted\">Tìm kiếm những người đã thiết đặt tuổi trong khoảng này</small>\n" +
+        "  </div>" +
+        "</li>";
+
+    advance_search_list_groups_innerHTML += "  </ul>\n" +
+        "                <button type=\"button\" class=\"btn btn-outline-primary btn-lg btn-block\" onclick=\"updateAdvanceSearch()\">\n" +
+        "                    Primary\n" +
+        "                </button>\n" +
+        "            </div>\n" +
+        "        </div>" +
+        "</div>\n"
+
+    advance_search_list_groups.innerHTML = advance_search_list_groups_innerHTML;
+
+    document.getElementById("exclude_last_connected").checked = exclude_last_connected;
+    document.getElementById("find_gender_" + find_gender).checked = true;
+    if (age_range !== null) {
+        document.getElementById("ageRange0").value = age_range[0];
+        document.getElementById("ageRange1").value = age_range[1];
+    }
+
+
+    function updateAdvanceSearch() {
+        let updateFindTagsList = [], ageRange0, ageRange1, ageRange, exclude_last_connected, find_gender;
+
+        ageRange0 = document.getElementById("ageRange0").value;
+        ageRange1 = document.getElementById("ageRange1").value;
+
+        if (ageRange0 === '' && ageRange1 === '') {
+            ageRange = null;
+        } else {
+            ageRange0 = Number(ageRange0);
+            ageRange1 = Number(ageRange1);
+
+            if (!(Number.isInteger(ageRange0) && ageRange0 >= 0
+                && Number.isInteger(ageRange1) && ageRange1 >= 0
+                && ageRange0 <= ageRange1)) {
+                alert('Invalid age range');
+                return;
+            } else {
+                ageRange = [ageRange0, ageRange1];
+            }
+        }
+
+        exclude_last_connected = document.getElementById("exclude_last_connected").checked;
+        if (document.getElementById("find_gender_male").checked) find_gender = "male";
+        if (document.getElementById("find_gender_female").checked) find_gender = "female";
+        else find_gender = null;
+
+
+        for (let tag in tag_list) {
+            let crrCheck = document.getElementById(tag + "FindCheckbox");
+            // console.log(crrCheck.checked);
+            if (crrCheck.checked === true) updateFindTagsList.push(tag);
+        }
+
+        postRequest('', updateFindTagsList, ageRange, exclude_last_connected, find_gender, senderId);
+        alert("Updated");
+
+    }
+
+    function postRequest(url, tags, age, exclude_last_connected, find_gender, senderId) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true); // true for asynchronous
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            find_tags: tags,
+            age_range: age,
+            exclude_last_connected: exclude_last_connected,
+            find_gender: find_gender,
+            senderId: senderId
+        }));
+    }
+
+</script>
+</body>
+</html>

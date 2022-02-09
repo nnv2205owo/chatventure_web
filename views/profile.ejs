@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="icon" href="https://i.imgur.com/u1OSDAq.png">
+    <title>Profile</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script type="text/javascript" src="js/scripts.js" async></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+            integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+            crossorigin="anonymous" async></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous" async></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous" async></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.slim.js"
+            integrity="sha256-HwWONEZrpuoh951cQD1ov2HUK5zA5DwJ1DNUXaM6FsY=" crossorigin="anonymous" async></script>
+</head>
+<body>
+<!-- Demo header-->
+<section class="py-5 header text-center text-white">
+    <div class="container pt-4">
+        <header>
+            <h1 class="display-4">Profile</h1>
+            <p class="font-italic mb-1">Các lựa chọn thiết đặt profile</p>
+            <p class="font-italic"> Trang chủ của
+                <a class="text- text-white" href="https://www.facebook.com/lqdchatventure">
+                    <u>LQDChatventure</u>
+                </a>
+            </p>
+        </header>
+    </div>
+</section>
+
+
+<section>
+    <div class="container">
+        <div class="row" id="list_groups">
+
+
+        </div>
+    </div>
+</section>
+<script>
+    var tag_list = <%- tag_list %>;
+    var tags = <%- tags %>;
+    var age = <%- age %>;
+    var nickname = <%- nickname %>;
+    var fb_link = <%- fb_link %>;
+    var gender = <%- gender %>;
+    var senderId = <%- senderId %>;
+    var check;
+
+    var profile_list_groups = document.getElementById('list_groups');
+
+    var profile_list_groups_innerHTML = "<div class=\"col-lg-7 mx-auto\">\n" +
+        "<div class=\"card shadow border-0 mb-5\">\n" +
+        "                    <div class=\"card-body p-5\">\n" +
+        "                        <h2 class=\"h4 mb-1\">Choose your main dish</h2>\n" +
+        "                        <p class=\"small text-muted font-italic mb-4\">Lorem ipsum dolor sit amet, consectetur adipisicing\n" +
+        "                            elit.</p>\n" +
+        "                        <ul class=\"list-group\">";
+    for (let tag in tag_list) {
+        let tag_data = tag_list[tag];
+        if (tags.includes(tag)) {
+            check = "checked";
+            // console.log(tag, tags);
+        } else check = "";
+        profile_list_groups_innerHTML +=
+            "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
+            "                                <div class=\"custom-control custom-checkbox\">\n" +
+            "                                    <input class=\"custom-control-input\" id=\"" + tag + "Checkbox\" type=\"checkbox\"\n" +
+            "                                           name=\"customCheckbox\" " + check + ">\n" +
+            "                                    <label class=\"custom-control-label\" for=\"" + tag + "Checkbox\">\n" +
+            "                                        <p class=\"mb-0\">" + tag + "</p><span class=\"small font-italic text-muted\">" + tag_data['description'] + "</span>\n" +
+            "                                    </label>\n" +
+            "                                </div>\n" +
+            "                                <label for=\"" + tag + "Checkbox\"><img src=\"" + tag_data['img'] + "\"\n" +
+            "                                                                  alt=\"\"\n" +
+            "                                                                  width=\"60\"></label>\n" +
+            "                            </li>"
+    }
+
+    profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
+        "<div class=\"form-group\">\n" +
+        "    <label for=\"Age\">Tuổi của bạn</label>\n" +
+        "    <input type=\"number\" class=\"form-control\" id=\"age\" aria-describedby=\"emailHelp\" placeholder=\"Tuổi của bạn\">\n" +
+        "    <small id=\"emailHelp\" class=\"form-text text-muted\">Giúp việc tìm kiếm hiệu quả và hữu ích hơn cho bạn và mọi người</small>\n" +
+        "  </div>" +
+        "</li>";
+
+    profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
+        "<div class=\"form-group\">\n" +
+        "    <label for=\"Nickname\">Nickname của bạn</label>\n" +
+        "    <input type=\"text\" class=\"form-control\" id=\"nickname\" aria-describedby=\"emailHelp\" placeholder=\"Nickname của bạn\">\n" +
+        "    <small id=\"emailHelp\" class=\"form-text text-muted\">Đại diện cho bạn trong những cuộc trò chuyện hoặc câu hỏi</small>\n" +
+        "  </div>" +
+        "</li>";
+
+    profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
+        "<div class=\"form-group\">\n" +
+        "    <label for=\"FBlink\">Link Fb của bạn</label>\n" +
+        "    <input type=\"url\" class=\"form-control\" id=\"fb_link\" aria-describedby=\"emailHelp\" placeholder=\"Link Fb của bạn\">\n" +
+        "    <small id=\"emailHelp\" class=\"form-text text-muted\">Tạo sự tiện lợi trong việc trao đổi in4.</small>\n" +
+        "  </div>" +
+        "</li>";
+
+    profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 align-items-center justify-content-between\">\n" +
+
+        "<input type=\"radio\" class=\"btn-check\" name=\"options-outlined\" id=\"female\" autocomplete=\"off\">\n" +
+        "<label class=\"btn btn-outline-success\" for=\"female\">Nữ</label>\n" +
+
+        "<input type=\"radio\" class=\"btn-check\" name=\"options-outlined\" id=\"male\" autocomplete=\"off\">\n" +
+        "<label class=\"btn btn-outline-success\" for=\"male\">Nam</label>\n" +
+
+        "<input type=\"radio\" class=\"btn-check\" name=\"options-outlined\" id=\"null\" autocomplete=\"off\">\n" +
+        "<label class=\"btn btn-outline-primary\" for=\"null\">Không chọn</label>" +
+
+        "</li>";
+
+
+    profile_list_groups_innerHTML += "  </ul>\n" +
+        "                <button type=\"button\" class=\"btn btn-outline-primary btn-lg btn-block\" onclick=\"updateProfile()\">\n" +
+        "                    Primary\n" +
+        "                </button>\n" +
+        "            </div>\n" +
+        "        </div>" +
+        "</div>\n"
+
+    profile_list_groups.innerHTML = profile_list_groups_innerHTML;
+
+    if (age !== null) document.getElementById("age").value = age;
+    document.getElementById("nickname").value = nickname;
+    if (fb_link !== null) document.getElementById("fb_link").value = fb_link;
+    document.getElementById(gender).checked = true;
+
+
+    function updateProfile() {
+        let updateTagsList = [], age, nickname, fb_link, gender;
+
+        age = document.getElementById("age").value;
+        if (age === '') age = null;
+        else {
+            age = Number(age);
+            if (!(Number.isInteger(age) && age >= 0)) {
+                alert('Invalid age');
+                return;
+            }
+        }
+
+        for (let tag in tag_list) {
+            let crrCheck = document.getElementById(tag + "Checkbox");
+            // console.log(crrCheck.checked);
+            if (crrCheck.checked === true) updateTagsList.push(tag);
+        }
+
+        nickname = document.getElementById("nickname").value;
+        fb_link = document.getElementById("fb_link").value;
+        if (document.getElementById("male").checked) gender = "male";
+        if (document.getElementById("female").checked) gender = "female";
+        else gender = null;
+
+        postRequest('', updateTagsList, age, nickname, fb_link, gender, senderId);
+        alert("Updated");
+
+    }
+
+    function postRequest(url, tags, age, nickname, fb_link, gender, senderId) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true); // true for asynchronous
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            tags: tags,
+            age: age,
+            nickname: nickname,
+            fb_link: fb_link,
+            gender: gender,
+            senderId: senderId
+        }));
+    }
+
+</script>
+</body>
+</html>
