@@ -2,6 +2,7 @@ const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
+require('dotenv').config()
 
 // Imports
 const express = require('express')
@@ -78,7 +79,14 @@ app.use(express.static('./'));
 app.set('views', './views');
 app.set('view engine', 'ejs');
 
-const serviceAccount = require('./lqdchatventure-firebase-adminsdk-p777u-b92ccc8457.json');
+const serviceAccount = JSON.parse(process.env.FIREBASE_serviceAccount)
+
+// const fs = require('fs');
+//
+// fs.appendFile('.env', JSON.stringify(serviceAccount), function (err) {
+//     if (err) throw err;
+//     console.log('Saved!');
+// });
 
 initializeApp({
     credential: cert(serviceAccount)
