@@ -163,7 +163,7 @@
         nickname = document.getElementById("nickname").value;
         fb_link = document.getElementById("fb_link").value;
         if (document.getElementById("male").checked) gender = "male";
-        if (document.getElementById("female").checked) gender = "female";
+        else if (document.getElementById("female").checked) gender = "female";
         else gender = null;
 
         postRequest('', updateTagsList, age, nickname, fb_link, gender, senderId);

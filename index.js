@@ -2,7 +2,7 @@ const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
-// require('dotenv').config()
+require('dotenv').config()
 
 // Imports
 const express = require('express')
