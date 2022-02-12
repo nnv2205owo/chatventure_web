@@ -2,7 +2,7 @@ const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
-// require('dotenv').config()
+require('dotenv').config()
 
 // Imports
 const express = require('express')
@@ -281,7 +281,7 @@ app.get('/quest', (req, res) => {
                         timestamp: questionDoc.data().timestamp,
                         mask_id: questionDoc.data().mask_id,
                         answers_count: questionDoc.data().answers_count,
-                        auth: questionDoc.data().author,
+                        author: questionDoc.data().author,
                         mask_sender_id: maskId
                     }
                 )
