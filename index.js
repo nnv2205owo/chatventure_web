@@ -126,11 +126,8 @@ app.get('/advance_search', (req, res) => {
             res.render('advance_search',
                 {
                     text: 'hey',
+                    senderData: JSON.stringify(doc.data()),
                     tag_list: JSON.stringify(tag_list),
-                    find_tags: JSON.stringify(doc.data().find_tags),
-                    exclude_last_connected: JSON.stringify(doc.data().exclude_last_connected),
-                    find_gender: JSON.stringify(doc.data().find_gender),
-                    age_range: JSON.stringify(doc.data().age_range),
                     senderId: JSON.stringify(maskId)
                 })
         }
@@ -196,16 +193,21 @@ app.get('/profile', (req, res) => {
             ref = db.collection('users').doc(senderId);
             doc = await ref.get();
 
+            let questdoc;
+            if (doc.data().crr_question !== null) {
+                ref = db.collection('questions').doc(doc.data().crr_question.toString());
+                questdoc = (await ref.get()).data();
+            } else questdoc = null;
+
             // console.log('Document data:', doc.data());
             // console.log(doc.data().tags, doc.data().find_tags)
+            // console.log(questdoc);
+
             res.render('profile',
                 {
                     text: 'hey',
-                    tags: JSON.stringify(doc.data().tags),
-                    age: JSON.stringify(doc.data().age),
-                    nickname: JSON.stringify(doc.data().nickname),
-                    fb_link: JSON.stringify(doc.data().fb_link),
-                    gender: JSON.stringify(doc.data().gender),
+                    senderData: JSON.stringify(doc.data()),
+                    questData: JSON.stringify(questdoc),
                     tag_list: JSON.stringify(tag_list),
                     senderId: JSON.stringify(maskId)
                 })
@@ -216,7 +218,7 @@ app.get('/profile', (req, res) => {
 app.post('/profile', (req, res) => {
     (async () => {
 
-        let params = req.body;
+        let params = req.body.data;
         let maskId = params.senderId;
         if (maskId === undefined) {
             console.log('nope')
@@ -233,14 +235,61 @@ app.post('/profile', (req, res) => {
         } else {
             let senderId = doc.data().id;
             // console.log(params);
-            const Ref = db.collection('users').doc(senderId);
-            const res = await Ref.set({
+            let Ref = db.collection('users').doc(senderId);
+            await Ref.set({
                 tags: params.tags,
                 age: params.age,
                 nickname: params.nickname,
                 fb_link: params.fb_link,
                 gender: params.gender,
             }, {merge: true});
+
+            if (params.answer !== '') {
+                let senderData = await Ref.get();
+                if (senderData.data().crr_question === null) return;
+                Ref = db.collection('questions').doc(senderData.data().crr_question.toString()).collection('answers');
+                await Ref.add({
+                    text: params.answer,
+                    author: params.nickname,
+                    author_id: senderId,
+                    timestamp: params.timestamp
+                });
+
+                Ref = db.collection('users').doc(senderId);
+                await Ref.set({
+                    crr_question: null,
+                    answered_questions: FieldValue.arrayUnion(senderData.data().crr_question)
+                }, {merge: true});
+
+                Ref = db.collection('questions').doc(senderData.data().crr_question.toString());
+                let answers_count = (await Ref.get()).data().answers_count;
+                await Ref.set({
+                    answers_count: answers_count + 1
+                }, {merge: true});
+
+                let questMaskId = (await Ref.get()).data().mask_id
+
+                let link = 'https://lqdchatventure-web.herokuapp.com/ans?id=' + questMaskId +
+                    '&senderId=' + maskId;
+
+                let elements = [{
+                    'title': 'Câu hỏi của bạn đã được ghi lại',
+                    'default_action': {
+                        'type': 'web_url',
+                        'url': link,
+                        'webview_height_ratio': 'full',
+                    },
+                    'buttons': [
+                        {
+                            'type': 'web_url',
+                            'url': link,
+                            'title': 'Các câu trả lời khác'
+                        }
+                    ]
+                }];
+                await sendList(senderId, elements);
+            }
+
         }
 
     })();
@@ -275,20 +324,57 @@ app.get('/quest', (req, res) => {
                 let questionDoc = await db.collection('questions')
                     .doc(doc.data().asked_questions[i].toString())
                     .get();
-                questions_list.push(
-                    {
-                        text: questionDoc.data().text,
-                        timestamp: questionDoc.data().timestamp,
-                        mask_id: questionDoc.data().mask_id,
-                        answers_count: questionDoc.data().answers_count,
-                        author: questionDoc.data().author,
-                        mask_sender_id: maskId
-                    }
-                )
+                let addQuestionDoc = questionDoc.data();
+                addQuestionDoc.mask_sender_id = maskId;
+                questions_list.push(addQuestionDoc)
             }
             // console.log('Document data:', doc.data());
             // console.log(doc.data().tags, doc.data().find_tags)
             res.render('quest',
+                {
+                    text: 'hey',
+                    questions_list: JSON.stringify(questions_list),
+                })
+        }
+    })();
+})
+
+// Navigation
+app.get('/answered', (req, res) => {
+    (async () => {
+        let maskId = req.query.id;
+        if (maskId === undefined) {
+            console.log('nope')
+            res.send("Wha");
+            return;
+        }
+
+        let ref = db.collection('global_vars').doc('masks').collection('users').doc(maskId);
+        let doc = await ref.get();
+
+        if (!doc.exists) {
+            console.log("User not found");
+            res.send("Bruh");
+        } else {
+            let senderId = doc.data().id;
+
+            // console.log(senderId);
+            ref = db.collection('users').doc(senderId)
+            doc = await ref.get();
+
+            let questions_list = [];
+            for (let i = 0; i < doc.data().answered_questions.length; i++) {
+                let questionDoc = await db.collection('questions')
+                    .doc(doc.data().answered_questions[i].toString())
+                    .get();
+                let addQuestionDoc = questionDoc.data();
+                addQuestionDoc.mask_sender_id = maskId;
+                questions_list.push(addQuestionDoc)
+            }
+
+            // console.log('Document data:', doc.data());
+            // console.log(doc.data().tags, doc.data().find_tags)
+            res.render('answered',
                 {
                     text: 'hey',
                     questions_list: JSON.stringify(questions_list),
@@ -322,28 +408,33 @@ app.get('/ans', (req, res) => {
             // console.log(senderId);
 
             ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
-            docQuest = await ref.get();
+            let docUserMask = await ref.get();
 
-            if (!docQuest.exists) {
+            if (!docUserMask.exists) {
                 res.send("Bruh2");
             } else {
+
+                let senderRealId = docUserMask.data().id;
 
                 ref = db.collection('questions').doc(questId.toString());
                 let snapShot = await ref.get();
                 let question = snapShot.data().text;
+
+                let questAuthorId = snapShot.data().author_id;
+                let isQuestAuthor = false;
+                if (questAuthorId === senderRealId) isQuestAuthor = true;
+                // console.log(questAuthorId, senderRealId);
 
                 ref = db.collection('questions').doc(questId.toString()).collection("answers");
                 snapShot = await ref.get();
 
                 let answers_list = [];
                 snapShot.forEach(doc => {
+                    let answerData = doc.data();
+                    answerData.isAnsAuthor = doc.data().author_id === senderRealId;
                     answers_list.push(
-                        {
-                            text: doc.data().text,
-                            timestamp: doc.data().timestamp,
-                            author: doc.data().author,
-                        }
-                    )
+                        answerData
+                    );
                 });
                 // console.log('Document data:', doc.data());
                 // console.log(doc.data().tags, doc.data().find_tags)
@@ -354,7 +445,8 @@ app.get('/ans', (req, res) => {
                         question: JSON.stringify(question),
                         answers_list: JSON.stringify(answers_list),
                         sender_id: JSON.stringify(senderMaskId),
-                        quest_id: JSON.stringify(questMaskId)
+                        quest_id: JSON.stringify(questMaskId),
+                        isQuestAuthor: JSON.stringify(isQuestAuthor)
                     })
             }
         }

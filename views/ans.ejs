@@ -26,7 +26,7 @@
 <!-- Demo header-->
 <section class="py-5 header text-center text-white">
     <div class="container pt-4">
-        <header>
+        <header id="header">
             <h1 class="display-4" id="question"></h1>
             <p class="font-italic mb-1">Các câu trả lời của câu hỏi. Bạn có thể gửi yêu cầu kết nối cho người đặt câu
                 hỏi hoặc trả lời</p>
@@ -35,8 +35,13 @@
                     <u>LQDChatventure</u>
                 </a>
             </p>
-            <button type="button" class="btn btn-primary" onclick="sendQRequest()"> Connect</button>
-
+            <script>
+                var isQuestAuthor = <%- isQuestAuthor %>;
+                if (!isQuestAuthor) {
+                    document.getElementById('header').innerHTML +=
+                        '<button type="button" class="btn btn-primary" onclick="sendQRequest()"> Kết nối với người hỏi</button>';
+                }
+            </script>
         </header>
     </div>
 </section>
@@ -82,9 +87,10 @@
                     "    <h2 class=\"h4 text-muted mb-1 alas\">" + answer_data.text + "</h2>\n" +
                     " <div class=\"mb-2\"> &nbsp; </div>" +
                     "        <p class=\"h4 small  font-italic mb-4\">" + answer_data.author + " - " + timeConverter(answer_data.timestamp) + "</p>\n" +
-                    " <div class=\"mb-2\"> &nbsp; </div>" +
-                    "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"sendARequest(" + cnt.toString() + ")\"> Connect </button>\n" +
-                    "</li>"
+                    " <div class=\"mb-2\"> &nbsp; </div>";
+                if (answer_data.isAnsAuthor) answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-warning\"\"> Bạn là tác giả của câu trả lời này </button>\n"
+                else answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"sendARequest(" + cnt.toString() + ")\"> Kết nối </button>\n";
+                answers_list_groups_innerHTML += "</li>"
 
                 // document.getElementById(cnt.toString()).onclick = function () {
                 //     postRequest('ans', cnt, quest_id, sender_id);

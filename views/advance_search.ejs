@@ -48,12 +48,9 @@
     </div>
 </section>
 <script>
-    var tag_list = <%- tag_list %>;
-    var find_tags = <%- find_tags %>;
     var senderId = <%- senderId %>;
-    var exclude_last_connected = <%- exclude_last_connected %>;
-    var find_gender = <%- find_gender %>
-    var age_range = <%- age_range %>
+    var senderData = <%- senderData %>;
+    var tag_list = <%- tag_list %>;
     var check;
 
     var advance_search_list_groups = document.getElementById('list_groups');
@@ -68,7 +65,7 @@
 
     for (let tag in tag_list) {
         let tag_data = tag_list[tag];
-        if (find_tags.includes(tag)) {
+        if (senderData.find_tags.includes(tag)) {
             check = "checked";
             // console.log(tag, tags);
         } else check = "";
@@ -126,11 +123,11 @@
 
     advance_search_list_groups.innerHTML = advance_search_list_groups_innerHTML;
 
-    document.getElementById("exclude_last_connected").checked = exclude_last_connected;
-    document.getElementById("find_gender_" + find_gender).checked = true;
-    if (age_range !== null) {
-        document.getElementById("ageRange0").value = age_range[0];
-        document.getElementById("ageRange1").value = age_range[1];
+    document.getElementById("exclude_last_connected").checked = senderData.exclude_last_connected;
+    document.getElementById("find_gender_" + senderData.find_gender).checked = true;
+    if (senderData.age_range !== null) {
+        document.getElementById("ageRange0").value = senderData.age_range[0];
+        document.getElementById("ageRange1").value = senderData.age_range[1];
     }
 
 

@@ -49,11 +49,8 @@
 </section>
 <script>
     var tag_list = <%- tag_list %>;
-    var tags = <%- tags %>;
-    var age = <%- age %>;
-    var nickname = <%- nickname %>;
-    var fb_link = <%- fb_link %>;
-    var gender = <%- gender %>;
+    var senderData = <%- senderData %>;
+    var questData = <%- questData %>;
     var senderId = <%- senderId %>;
     var check;
 
@@ -67,7 +64,7 @@
         "                        <ul class=\"list-group\">";
     for (let tag in tag_list) {
         let tag_data = tag_list[tag];
-        if (tags.includes(tag)) {
+        if (senderData.tags.includes(tag)) {
             check = "checked";
             // console.log(tag, tags);
         } else check = "";
@@ -89,24 +86,24 @@
     profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
         "<div class=\"form-group\">\n" +
         "    <label for=\"Age\">Tuổi của bạn</label>\n" +
-        "    <input type=\"number\" class=\"form-control\" id=\"age\" aria-describedby=\"emailHelp\" placeholder=\"Tuổi của bạn\">\n" +
-        "    <small id=\"emailHelp\" class=\"form-text text-muted\">Giúp việc tìm kiếm hiệu quả và hữu ích hơn cho bạn và mọi người</small>\n" +
+        "    <input type=\"number\" class=\"form-control\" id=\"age\" aria-describedby=\"age_aria\" placeholder=\"Tuổi của bạn\">\n" +
+        "    <small id=\"age_aria\" class=\"form-text text-muted\">Giúp việc tìm kiếm hiệu quả và hữu ích hơn cho bạn và mọi người</small>\n" +
         "  </div>" +
         "</li>";
 
     profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
         "<div class=\"form-group\">\n" +
         "    <label for=\"Nickname\">Nickname của bạn</label>\n" +
-        "    <input type=\"text\" class=\"form-control\" id=\"nickname\" aria-describedby=\"emailHelp\" placeholder=\"Nickname của bạn\">\n" +
-        "    <small id=\"emailHelp\" class=\"form-text text-muted\">Đại diện cho bạn trong những cuộc trò chuyện hoặc câu hỏi</small>\n" +
+        "    <input type=\"text\" class=\"form-control\" id=\"nickname\" aria-describedby=\"nickname_aria\" placeholder=\"Nickname của bạn\">\n" +
+        "    <small id=\"nickname_aria\" class=\"form-text text-muted\">Đại diện cho bạn trong những cuộc trò chuyện hoặc câu hỏi</small>\n" +
         "  </div>" +
         "</li>";
 
     profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">\n" +
         "<div class=\"form-group\">\n" +
         "    <label for=\"FBlink\">Link Fb của bạn</label>\n" +
-        "    <input type=\"url\" class=\"form-control\" id=\"fb_link\" aria-describedby=\"emailHelp\" placeholder=\"Link Fb của bạn\">\n" +
-        "    <small id=\"emailHelp\" class=\"form-text text-muted\">Tạo sự tiện lợi trong việc trao đổi in4.</small>\n" +
+        "    <input type=\"url\" class=\"form-control\" id=\"fb_link\" aria-describedby=\"info_aria\" placeholder=\"Link Fb của bạn\">\n" +
+        "    <small id=\"info_aria\" class=\"form-text text-muted\">Tạo sự tiện lợi trong việc trao đổi in4.</small>\n" +
         "  </div>" +
         "</li>";
 
@@ -123,6 +120,34 @@
 
         "</li>";
 
+    profile_list_groups_innerHTML += "<div id=\"crr_quest\">";
+    if (questData === null) {
+        profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+            "    <h2 class=\"h4 mb-1\ alas\">" + 'Bạn chưa tìm kiếm câu hỏi nào' + "</h2>\n" +
+            " <div class=\"mb-2\"> &nbsp; </div>" +
+            "        <p class=\"small text-muted font-italic mb-4\">" + 'Tìm cho mình 1 câu hỏi thú vị bằng lệnh timcauhoi' + "</p>\n";
+        "</li>";
+    } else {
+        profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+            "    <h2 class=\"h4 mb-1\ alas\">" + questData.text + "</h2>\n" +
+            " <div class=\"mb-2\"> &nbsp; </div>" +
+            "        <p class=\"border p-3 m-1 d-inline-block small text-muted font-italic mb-4\">" + questData.author + " - " + timeConverter(questData.timestamp) + "</p>\n" +
+            "</li>";
+
+        profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+            "<div class=\"form-group\">\n" +
+            "    <textarea aria-label=\"With textarea\" class=\"form-control\" id=\"answer\" aria-describedby=\"answer_aria\" placeholder=\"Câu trả lời của bạn\"></textarea>" +
+            "    <small id=\"answer_aria\" class=\"form-text text-muted\">----------- Bởi vì lời nói của bạn có thể cứu rỗi cả 1 cuộc sống của người khác -----------</small>\n" +
+            "  </div>" +
+            "</li>";
+    }
+    profile_list_groups_innerHTML += "</div>";
+
+    profile_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+        '<button type="button" class="btn btn-success" onclick="document.location=\'quest?id=' + senderId + '\'"> Câu hỏi của tôi </button>' +
+        '<button type="button" class="btn btn-success" onclick="document.location=\'answered?id=' + senderId + '\'"> Câu hỏi đã trả lời</button>' +
+        "</li>";
+
 
     profile_list_groups_innerHTML += "  </ul>\n" +
         "                <button type=\"button\" class=\"btn btn-outline-primary btn-lg btn-block\" onclick=\"updateProfile()\">\n" +
@@ -134,14 +159,17 @@
 
     profile_list_groups.innerHTML = profile_list_groups_innerHTML;
 
-    if (age !== null) document.getElementById("age").value = age;
-    document.getElementById("nickname").value = nickname;
-    if (fb_link !== null) document.getElementById("fb_link").value = fb_link;
-    document.getElementById(gender).checked = true;
+    if (senderData.age !== null) document.getElementById("age").value = senderData.age;
+    document.getElementById("nickname").value = senderData.nickname;
+    if (senderData.fb_link !== null) document.getElementById("fb_link").value = senderData.fb_link;
+    document.getElementById(senderData.gender).checked = true;
 
+    function askedQuestions() {
+
+    }
 
     function updateProfile() {
-        let updateTagsList = [], age, nickname, fb_link, gender;
+        let updateTagsList = [], age, nickname, fb_link, gender, answer;
 
         age = document.getElementById("age").value;
         if (age === '') age = null;
@@ -161,27 +189,59 @@
 
         nickname = document.getElementById("nickname").value;
         fb_link = document.getElementById("fb_link").value;
+
+        if (document.getElementById("answer") != null) answer = document.getElementById("answer").value;
+        else answer = '';
+
         if (document.getElementById("male").checked) gender = "male";
         else if (document.getElementById("female").checked) gender = "female";
         else gender = null;
 
-        postRequest('', updateTagsList, age, nickname, fb_link, gender, senderId);
-        alert("Updated");
 
-    }
-
-    function postRequest(url, tags, age, nickname, fb_link, gender, senderId) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", url, true); // true for asynchronous
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify({
-            tags: tags,
+        let data = {
+            tags: updateTagsList,
             age: age,
             nickname: nickname,
             fb_link: fb_link,
             gender: gender,
+            answer: answer,
+            timestamp: Date.now(),
             senderId: senderId
+        }
+
+        if (answer !== '') {
+            document.getElementById('crr_quest').innerHTML = "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                "    <h2 class=\"h4 mb-1\ alas\">" + 'Bạn chưa tìm kiếm câu hỏi nào' + "</h2>\n" +
+                " <div class=\"mb-2\"> &nbsp; </div>" +
+                "        <p class=\"small text-muted font-italic mb-4\">" + 'Tìm cho mình 1 câu hỏi thú vị bằng lệnh timcauhoi' + "</p>\n";
+            "</li>";
+        }
+
+        postRequest('', data);
+
+        alert('Đã cập nhật')
+    }
+
+    function postRequest(url, data) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", url, true); // true for asynchronous
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            data: data
         }));
+    }
+
+    function timeConverter(timestamp) {
+        var a = new Date(timestamp);
+        // var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // var year = a.getFullYear();
+        // var month = months[a.getMonth()];
+        // var date = a.getDate();
+        // var hour = a.getHours();
+        // var min = a.getMinutes();
+        // var sec = a.getSeconds();
+        // return date + " " + month + " " + year + " " + hour + ":" + min + ":" + sec;
+        return a.toLocaleString("vi-VN", {timeZone: "Asia/Ho_Chi_Minh"});
     }
 
 </script>
