@@ -448,8 +448,9 @@ app.get('/ans', (req, res) => {
             let question = snapShot.data().text;
 
             let questAuthorId = snapShot.data().author_id;
+
             let isQuestAuthor = false;
-            if (questAuthorId === senderRealId) isQuestAuthor = true;
+            if (questAuthorId === senderRealId || questAuthorId === 'SYSTEM') isQuestAuthor = true;
             // console.log(questAuthorId, senderRealId);
 
             ref = db.collection('questions').doc(questId).collection("answers");
@@ -490,7 +491,7 @@ app.post('/ans', (req, res) => {
             let questId = params.quest_id;
             let ansId = params.ans_id;
 
-            console.log("Params : ", params);
+            // console.log("Params : ", params);
 
             if (senderMaskId === undefined || questId === undefined) {
                 console.log('nope')
@@ -576,8 +577,6 @@ app.post('/ans', (req, res) => {
                 sendList(senderId, elements);
 
             }
-
-
         }
     )();
 })
