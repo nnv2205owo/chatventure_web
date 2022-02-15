@@ -94,6 +94,20 @@ initializeApp({
 
 const db = getFirestore();
 
+// (async () => {
+//     let senderId = '4007404939324313';
+//     let senderData = await db.collection('users').doc(senderId).get();
+//
+//     let quest = await db.collection('questions')
+//         .where('id', 'in', [0, 1, 2, 3])
+//         .get()
+//
+//     quest.forEach(doc => {
+//         console.log(doc.id, '=>', doc.data());
+//     });
+//
+// })();
+
 // Navigation
 app.get('/advance_search', (req, res) => {
     (async () => {
@@ -154,8 +168,8 @@ app.post('/advance_search', (req, res) => {
         } else {
             let senderId = doc.data().id;
             // console.log(params);
-            const Ref = db.collection('users').doc(senderId);
-            const res = await Ref.set({
+            const ref = db.collection('users').doc(senderId);
+            const res = await ref.set({
                 find_tags: params.find_tags,
                 age_range: params.age_range,
                 exclude_last_connected: params.exclude_last_connected,
@@ -195,7 +209,7 @@ app.get('/profile', (req, res) => {
 
             let questdoc;
             if (doc.data().crr_question !== null) {
-                ref = db.collection('questions').doc(doc.data().crr_question.toString());
+                ref = db.collection('questions').doc(doc.data().crr_question);
                 questdoc = (await ref.get()).data();
             } else questdoc = null;
 
@@ -235,8 +249,8 @@ app.post('/profile', (req, res) => {
         } else {
             let senderId = doc.data().id;
             // console.log(params);
-            let Ref = db.collection('users').doc(senderId);
-            await Ref.set({
+            let ref = db.collection('users').doc(senderId);
+            await ref.set({
                 tags: params.tags,
                 age: params.age,
                 nickname: params.nickname,
@@ -245,29 +259,29 @@ app.post('/profile', (req, res) => {
             }, {merge: true});
 
             if (params.answer !== '') {
-                let senderData = await Ref.get();
+                let senderData = await ref.get();
                 if (senderData.data().crr_question === null) return;
-                Ref = db.collection('questions').doc(senderData.data().crr_question.toString()).collection('answers');
-                await Ref.add({
+                ref = db.collection('questions').doc(senderData.data().crr_question).collection('answers');
+                await ref.add({
                     text: params.answer,
                     author: params.nickname,
                     author_id: senderId,
                     timestamp: params.timestamp
                 });
 
-                Ref = db.collection('users').doc(senderId);
-                await Ref.set({
+                ref = db.collection('users').doc(senderId);
+                await ref.set({
                     crr_question: null,
                     answered_questions: FieldValue.arrayUnion(senderData.data().crr_question)
                 }, {merge: true});
 
-                Ref = db.collection('questions').doc(senderData.data().crr_question.toString());
-                let answers_count = (await Ref.get()).data().answers_count;
-                await Ref.set({
+                ref = db.collection('questions').doc(senderData.data().crr_question);
+                let answers_count = (await ref.get()).data().answers_count;
+                await ref.set({
                     answers_count: answers_count + 1
                 }, {merge: true});
 
-                let questMaskId = (await Ref.get()).data().mask_id
+                let questMaskId = (await ref.get()).data().mask_id
 
                 let link = 'https://lqdchatventure-web.herokuapp.com/ans?id=' + questMaskId +
                     '&senderId=' + maskId;
@@ -298,20 +312,22 @@ app.post('/profile', (req, res) => {
 // Navigation
 app.get('/quest', (req, res) => {
     (async () => {
-        let maskId = req.query.id;
-        if (maskId === undefined) {
-            console.log('nope')
-            res.send("Wha");
-            return;
-        }
+            let maskId = req.query.id;
+            if (maskId === undefined) {
+                console.log('nope')
+                res.send("Wha");
+                return;
+            }
 
-        let ref = db.collection('global_vars').doc('masks').collection('users').doc(maskId);
-        let doc = await ref.get();
+            let ref = db.collection('global_vars').doc('masks').collection('users').doc(maskId);
+            let doc = await ref.get();
 
-        if (!doc.exists) {
-            console.log("User not found");
-            res.send("Bruh");
-        } else {
+            if (!doc.exists) {
+                console.log("User not found");
+                res.send("Bruh");
+                return
+            }
+
             let senderId = doc.data().id;
 
             // console.log(senderId);
@@ -319,15 +335,21 @@ app.get('/quest', (req, res) => {
             doc = await ref.get();
 
             let questions_list = [];
+
             // console.log(doc.data());
-            for (let i = 0; i < doc.data().asked_questions.length; i++) {
-                let questionDoc = await db.collection('questions')
-                    .doc(doc.data().asked_questions[i].toString())
-                    .get();
-                let addQuestionDoc = questionDoc.data();
+
+            let questCollection = await db.collection('questions')
+                .where('author_id', '==', senderId)
+                .orderBy('timestamp', 'desc')
+                .get();
+
+            questCollection.forEach(quest => {
+                // console.log(quest.id, '=>', quest.data());
+                let addQuestionDoc = quest.data();
                 addQuestionDoc.mask_sender_id = maskId;
                 questions_list.push(addQuestionDoc)
-            }
+            });
+
             // console.log('Document data:', doc.data());
             // console.log(doc.data().tags, doc.data().find_tags)
             res.render('quest',
@@ -335,8 +357,9 @@ app.get('/quest', (req, res) => {
                     text: 'hey',
                     questions_list: JSON.stringify(questions_list),
                 })
+
         }
-    })();
+    )();
 })
 
 // Navigation
@@ -355,55 +378,58 @@ app.get('/answered', (req, res) => {
         if (!doc.exists) {
             console.log("User not found");
             res.send("Bruh");
-        } else {
-            let senderId = doc.data().id;
-
-            // console.log(senderId);
-            ref = db.collection('users').doc(senderId)
-            doc = await ref.get();
-
-            let questions_list = [];
-            for (let i = 0; i < doc.data().answered_questions.length; i++) {
-                let questionDoc = await db.collection('questions')
-                    .doc(doc.data().answered_questions[i].toString())
-                    .get();
-                let addQuestionDoc = questionDoc.data();
-                addQuestionDoc.mask_sender_id = maskId;
-                questions_list.push(addQuestionDoc)
-            }
-
-            // console.log('Document data:', doc.data());
-            // console.log(doc.data().tags, doc.data().find_tags)
-            res.render('answered',
-                {
-                    text: 'hey',
-                    questions_list: JSON.stringify(questions_list),
-                })
+            return;
         }
+
+        let senderId = doc.data().id;
+
+        // console.log(senderId);
+        ref = db.collection('users').doc(senderId)
+        doc = await ref.get();
+
+        let questions_list = [];
+
+        let questCollection = await db.collection('questions')
+            .where('answered_users', 'array-contains', senderId)
+            .get();
+
+        for (let quest in questCollection.docs) {
+            let addQuestionDoc = questCollection.docs[quest].data();
+            addQuestionDoc.mask_sender_id = maskId;
+            addQuestionDoc.id = questCollection.docs[quest].id;
+            questions_list.push(addQuestionDoc)
+        }
+
+        // console.log('Document data:', doc.data());
+        // console.log(doc.data().tags, doc.data().find_tags)
+        res.render('answered',
+            {
+                text: 'hey',
+                questions_list: JSON.stringify(questions_list),
+            })
+
     })();
 })
 
 // Navigation
 app.get('/ans', (req, res) => {
     (async () => {
-        let questMaskId = req.query.id;
-        let senderMaskId = req.query.senderId;
-        if (questMaskId === undefined || senderMaskId === undefined) {
-            console.log('nope')
-            res.send("Wha");
-            return;
-        }
+            let questId = req.query.questId;
+            let senderMaskId = req.query.id;
+            // console.log(req.query);
+            if (questId === undefined || senderMaskId === undefined) {
+                console.log('nope')
+                res.send("Wha");
+                return;
+            }
 
-        let ref = db.collection('global_vars').doc('masks').collection('questions').doc(questMaskId);
-        let docQuest = await ref.get();
+            let ref = db.collection('questions').doc(questId);
+            let docQuest = await ref.get();
 
-        if (!docQuest.exists) {
-            res.send("Bruh");
-        } else {
-
-            // console.log("Doc data : ", doc.data());
-
-            let questId = docQuest.data().id;
+            if (!docQuest.exists) {
+                res.send("Bruh");
+                return
+            }
 
             // console.log(senderId);
 
@@ -412,82 +438,86 @@ app.get('/ans', (req, res) => {
 
             if (!docUserMask.exists) {
                 res.send("Bruh2");
-            } else {
-
-                let senderRealId = docUserMask.data().id;
-
-                ref = db.collection('questions').doc(questId.toString());
-                let snapShot = await ref.get();
-                let question = snapShot.data().text;
-
-                let questAuthorId = snapShot.data().author_id;
-                let isQuestAuthor = false;
-                if (questAuthorId === senderRealId) isQuestAuthor = true;
-                // console.log(questAuthorId, senderRealId);
-
-                ref = db.collection('questions').doc(questId.toString()).collection("answers");
-                snapShot = await ref.get();
-
-                let answers_list = [];
-                snapShot.forEach(doc => {
-                    let answerData = doc.data();
-                    answerData.isAnsAuthor = doc.data().author_id === senderRealId;
-                    answers_list.push(
-                        answerData
-                    );
-                });
-                // console.log('Document data:', doc.data());
-                // console.log(doc.data().tags, doc.data().find_tags)
-
-                res.render('ans',
-                    {
-                        text: 'hey',
-                        question: JSON.stringify(question),
-                        answers_list: JSON.stringify(answers_list),
-                        sender_id: JSON.stringify(senderMaskId),
-                        quest_id: JSON.stringify(questMaskId),
-                        isQuestAuthor: JSON.stringify(isQuestAuthor)
-                    })
+                return;
             }
+
+            let senderRealId = docUserMask.data().id;
+
+            ref = db.collection('questions').doc(questId);
+            let snapShot = await ref.get();
+            let question = snapShot.data().text;
+
+            let questAuthorId = snapShot.data().author_id;
+            let isQuestAuthor = false;
+            if (questAuthorId === senderRealId) isQuestAuthor = true;
+            // console.log(questAuthorId, senderRealId);
+
+            ref = db.collection('questions').doc(questId).collection("answers");
+            snapShot = await ref.get();
+
+            let answers_list = [];
+            snapShot.forEach(doc => {
+                let answerData = doc.data();
+                answerData.isAnsAuthor = doc.data().author_id === senderRealId;
+                answerData.id = doc.id;
+                answers_list.push(
+                    answerData
+                );
+            });
+            // console.log('Document data:', doc.data());
+            // console.log(doc.data().tags, doc.data().find_tags)
+
+            res.render('ans',
+                {
+                    text: 'hey',
+                    question: JSON.stringify(question),
+                    answers_list: JSON.stringify(answers_list),
+                    sender_id: JSON.stringify(senderMaskId),
+                    quest_id: JSON.stringify(questId),
+                    isQuestAuthor: JSON.stringify(isQuestAuthor)
+                })
+
+
         }
-    })();
+    )();
 })
 
 app.post('/ans', (req, res) => {
     (async () => {
 
-        let params = req.body;
-        let senderMaskId = params.sender_id;
-        let questMaskId = params.quest_id;
-        let ansId = params.ans_id;
+            let params = req.body;
+            let senderMaskId = params.sender_id;
+            let questId = params.quest_id;
+            let ansId = params.ans_id;
 
-        console.log("Params : ", params);
+            console.log("Params : ", params);
 
-        if (senderMaskId === undefined || questMaskId === undefined) {
-            console.log('nope')
-            res.send("Wha");
-            return;
-        }
+            if (senderMaskId === undefined || questId === undefined) {
+                console.log('nope')
+                res.send("Wha");
+                return;
+            }
 
-        let ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId.toString());
-        let doc = await ref.get();
-        let senderId = doc.data().id;
+            let ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
+            let doc = await ref.get();
 
-        console.log("hey", doc.data());
+            if (!doc.exists) {
+                console.log("User not found");
+                res.send("Bruh");
+                return;
+            }
 
-        if (!doc.exists) {
-            console.log("User not found");
-            res.send("Bruh");
-        } else {
-            ref = db.collection('global_vars').doc('masks').collection('questions').doc(questMaskId.toString());
+            let senderId = doc.data().id;
+
+            // console.log("hey", doc.data());
+
+            ref = db.collection('global_vars').doc('masks').collection('questions').doc(questId);
             doc = await ref.get();
 
-            let questId = doc.data().id;
-
             if (params.type === 'a')
-                ref = db.collection('questions').doc(questId.toString()).collection("answers").doc(ansId.toString());
+                ref = db.collection('questions').doc(questId).collection("answers").doc(ansId);
             else
-                ref = db.collection('questions').doc(questId.toString());
+                ref = db.collection('questions').doc(questId);
 
 
             doc = await ref.get();
@@ -546,9 +576,10 @@ app.post('/ans', (req, res) => {
                 sendList(senderId, elements);
 
             }
-        }
 
-    })();
+
+        }
+    )();
 })
 
 function sendList(senderID, elements) {
@@ -574,3 +605,90 @@ function sendList(senderID, elements) {
         }
     });
 }
+
+// Navigation
+app.get('/meeting_rooms', (req, res) => {
+    (async () => {
+        let senderMaskId = req.query.id;
+        if (senderMaskId === undefined) {
+            console.log('nope')
+            res.send("Wha");
+            return;
+        }
+
+        let ref = db.collection('global_vars').doc('meeting_rooms').collection('rooms');
+        let roomCollection = await ref.get();
+
+        // console.log("Doc data : ", doc.data());
+
+        let rooms_list = []
+
+        roomCollection.forEach(room => {
+            let data = room.data();
+            data.id = room.id;
+            rooms_list.push(room.data());
+        });
+
+        // console.log(senderId);
+
+        res.render('meeting_rooms',
+            {
+                rooms_list: JSON.stringify(rooms_list),
+                sender_id: JSON.stringify(senderMaskId)
+            })
+
+
+    })();
+})
+
+app.post('/meeting_rooms', (req, res) => {
+    (async () => {
+
+        let params = req.body;
+        let senderMaskId = params.sender_id;
+
+        console.log("Params : ", params);
+
+        if (senderMaskId === undefined) {
+            console.log('nope')
+            res.send("Wha");
+            return;
+        }
+
+        let ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
+        let doc = await ref.get();
+
+        // console.log("hey", doc.data());
+
+        if (!doc.exists) {
+            console.log("User not found");
+            res.send("Bruh");
+            return;
+        }
+
+        let senderId = doc.data().id;
+
+        ref = db.collection('users').doc(senderId);
+        let senderData = await ref.get();
+
+        if (params.room_id !== undefined) {
+
+            let meetingRoomId = params.room_id;
+
+            if (senderData.data().crr_meeting_room !== null) {
+                bot.sendTextMessage(senderId, "Bạn đang ở trong phòng họp khác")
+                res.send({error: 1})
+                return;
+            }
+
+            await ref.set({
+                crr_meeting_room: meetingRoomId
+            }, {merge: true})
+
+            bot.sendTextMessage(senderId, "Bạn đã đăng ký tham gia phòng thành công");
+
+        } else {
+
+        }
+    })();
+})

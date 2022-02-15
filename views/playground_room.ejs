@@ -35,13 +35,6 @@
                     <u>LQDChatventure</u>
                 </a>
             </p>
-            <script>
-                var isQuestAuthor = <%- isQuestAuthor %>;
-                if (!isQuestAuthor) {
-                    document.getElementById('header').innerHTML +=
-                        '<button type="button" class="btn btn-primary" onclick="sendQRequest()"> Kết nối với người hỏi</button>';
-                }
-            </script>
         </header>
     </div>
 </section>
@@ -65,7 +58,7 @@
 
     // console.log(answers_list, sender_id, quest_id, answers_list_groups)
 
-    var answers_list_groups_innerHTML = "<div class=\"col-lg-12 mx-auto\">\n" +
+    var rooms_list_groups_innerHTML = "<div class=\"col-lg-12 mx-auto\">\n" +
         "<div class=\"card shadow border-0 mb-5\">\n" +
         "                    <div class=\"card-body p-5\">\n" +
         "                        <ul class=\"list-group\">";
@@ -76,16 +69,17 @@
             "        <p class=\"small text-muted font-italic mb-4\">Hãy đến đây lúc khác</p>\n";
         "</li>"
     } else {
+        let cnt = 0;
         for (let answer in answers_list) {
             let answer_data = answers_list[answer];
             answers_list_groups_innerHTML +=
-                "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\" id=\"" + answer_data.id + "\">" +
+                "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\" id=\"" + cnt.toString() + "\">" +
                 "    <h2 class=\"h4 text-muted mb-1 alas\">" + answer_data.text + "</h2>\n" +
                 " <div class=\"mb-2\"> &nbsp; </div>" +
                 "        <p class=\"h4 small  font-italic mb-4\">" + answer_data.author + " - " + timeConverter(answer_data.timestamp) + "</p>\n" +
                 " <div class=\"mb-2\"> &nbsp; </div>";
             if (answer_data.isAnsAuthor) answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-warning\"\"> Bạn là tác giả của câu trả lời này </button>\n"
-            else answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"sendARequest(" + answer_data.id + ")\"> Kết nối </button>\n";
+            else answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"sendARequest(" + cnt.toString() + ")\"> Kết nối </button>\n";
             answers_list_groups_innerHTML += "</li>"
 
             // document.getElementById(cnt.toString()).onclick = function () {
@@ -117,8 +111,8 @@
         }));
     }
 
-    function sendARequest(ans_id) {
-        postRequest('', 'a', quest_id, ans_id, sender_id);
+    function sendARequest(cnt) {
+        postRequest('', 'a', quest_id, cnt, sender_id);
     }
 
     function sendQRequest() {
@@ -135,7 +129,7 @@
         // var min = a.getMinutes();
         // var sec = a.getSeconds();
         // return date + " " + month + " " + year + " " + hour + ":" + min + ":" + sec;
-        return a.toLocaleString("vi-VN", {timeZone: "Asia/Ho_Chi_Minh"});
+        return a.toLocaleString("vi-VN", {timeZone: "Asia/Da_Nang"});
     }
 
 </script>
