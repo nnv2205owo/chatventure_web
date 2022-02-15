@@ -68,7 +68,7 @@
         } else {
             for (let question in questions_list) {
                 let question_data = questions_list[question];
-                let link = "https://lqdchatventure-web.herokuapp.com/ans?id=" + question_data.mask_id + "&senderId=" + question_data.mask_sender_id;
+                let link = "https://lqdchatventure-web.herokuapp.com/ans?id=" + question_data.id + "&senderId=" + question_data.mask_sender_id;
                 questions_list_groups_innerHTML +=
                     "<a href=\"" + link + "\" >" +
                     "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +

@@ -347,6 +347,7 @@ app.get('/quest', (req, res) => {
                 // console.log(quest.id, '=>', quest.data());
                 let addQuestionDoc = quest.data();
                 addQuestionDoc.mask_sender_id = maskId;
+                addQuestionDoc.id = quest.id;
                 questions_list.push(addQuestionDoc)
             });
 
