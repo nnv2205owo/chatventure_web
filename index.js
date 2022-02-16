@@ -194,7 +194,7 @@ app.get('/profile', (req, res) => {
             doc = await ref.get();
 
             let questdoc;
-            if (doc.data().crr_question !== null || doc.data().crr_question !== undefined) {
+            if (doc.data().crr_question !== null && doc.data().crr_question !== undefined) {
                 console.log(doc.data());
                 ref = db.collection('questions').doc(doc.data().crr_question);
                 questdoc = (await ref.get()).data();
