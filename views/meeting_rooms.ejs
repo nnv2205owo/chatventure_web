@@ -51,26 +51,22 @@
 
                         <div class="input-group flex-nowrap p-3 m-1">
                             <div class="input-group-prepend">
-                                <span class="input-group-text" id="room-name-addon-wrapping">Tên room</span>
+                                <span class="input-group-text">Tên phòng và số thành viên (10 - 222)</span>
                             </div>
-                            <input type="text" class="form-control" placeholder="Username" aria-label="Tên room của bạn"
-                                   aria-describedby="addon-wrapping" id="room-name">
+                            <input type="text" aria-label="room-name-label" class="form-control"
+                                   placeholder="Tên phòng" id="room-name">
+                            <input type="number" aria-label="room-participants-number-label" class="form-control"
+                                   placeholder="Số thành viên" min="10" max="100" id="room-participants-number">
                         </div>
 
-                        <div class="input-group flex-nowrap p-3 m-1">
+                        <div class="input-group flex-nowrap p-3 m-1 input-group-lg">
                             <div class="input-group-prepend">
-                                <span class="input-group-text" id="room-description-addon-wrapping">Tiêu đề</span>
+                                <span class="input-group-text" id="room-description-addon-wrapping">Mô tả</span>
                             </div>
-                            <input type="text" class="form-control" placeholder="Username"
-                                   aria-label="Chút mô tả về room của bạn?"
+                            <input type="text" class="form-control"
+                                   placeholder="Chút mô tả về room của bạn? (Không bắt buộc)"
+                                   aria-label="room-description-label"
                                    aria-describedby="addon-wrapping" id="room-description">
-                        </div>
-
-                        <div class="input-group flex-nowrap p-3 m-1">
-
-                            <label for="start-date">Start date: &nbsp &nbsp</label>
-                            <input type="datetime-local" id="room-start-date" name="trip-start">
-
                         </div>
 
                         <div class="input-group flex-nowrap p-3 m-1">
@@ -139,8 +135,14 @@
     rooms_list_groups.innerHTML = rooms_list_groups_innerHTML;
 
     function handlerCallback(response) {
-        if (response.error === 1) {
-            alert("Bạn đang ở trong phòng họp khác");
+        switch (response.error) {
+            case 1:
+                alert("Wait what who r u");
+                break;
+            case 2:
+                alert("Bạn đang ở trong phòng họp khác");
+                break;
+
         }
     }
 
@@ -178,8 +180,13 @@
         let data = {
             room_name: document.getElementById("room-name").value,
             room_description: document.getElementById("room-description").value,
-            room_start_date_timestamp: document.getElementById("room-start-date").valueAsNumber,
+            room_participants_number: document.getElementById("room-participants-number").value,
             sender_id: sender_id
+        }
+
+        if (!Number.isInteger(data.room_participants_number) || 222 < data.room_participants_number || data.room_participants_number < 10) {
+            alert("Số thành viên tham gia phải lớn hơn 10 và bé hơn 222");
+            return;
         }
 
         postRequest('', data);

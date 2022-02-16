@@ -2,7 +2,7 @@ const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
-// require('dotenv').config()
+require('dotenv').config()
 
 // Imports
 const express = require('express')
@@ -88,25 +88,11 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_serviceAccount)
 //     console.log('Saved!');
 // });
 
-initializeApp({
+const firebase_app = initializeApp({
     credential: cert(serviceAccount)
 });
 
 const db = getFirestore();
-
-// (async () => {
-//     let senderId = '4007404939324313';
-//     let senderData = await db.collection('users').doc(senderId).get();
-//
-//     let quest = await db.collection('questions')
-//         .where('id', 'in', [0, 1, 2, 3])
-//         .get()
-//
-//     quest.forEach(doc => {
-//         console.log(doc.id, '=>', doc.data());
-//     });
-//
-// })();
 
 // Navigation
 app.get('/advance_search', (req, res) => {
@@ -208,7 +194,8 @@ app.get('/profile', (req, res) => {
             doc = await ref.get();
 
             let questdoc;
-            if (doc.data().crr_question !== null) {
+            if (doc.data().crr_question !== null || doc.data().crr_question !== undefined) {
+                console.log(doc.data());
                 ref = db.collection('questions').doc(doc.data().crr_question);
                 questdoc = (await ref.get()).data();
             } else questdoc = null;
@@ -647,12 +634,12 @@ app.post('/meeting_rooms', (req, res) => {
         let params = req.body;
         let senderMaskId = params.sender_id;
 
-        console.log("Params : ", params);
+        // console.log("Params : ", params);
 
         if (senderMaskId === undefined) {
             console.log('nope')
-            res.send("Wha");
-            return;
+            res.send({error: 1})
+            return 0;
         }
 
         let ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
@@ -662,8 +649,8 @@ app.post('/meeting_rooms', (req, res) => {
 
         if (!doc.exists) {
             console.log("User not found");
-            res.send("Bruh");
-            return;
+            res.send({error: 1})
+            return 0;
         }
 
         let senderId = doc.data().id;
@@ -677,7 +664,7 @@ app.post('/meeting_rooms', (req, res) => {
 
             if (senderData.data().crr_meeting_room !== null) {
                 bot.sendTextMessage(senderId, "Bạn đang ở trong phòng họp khác")
-                res.send({error: 1})
+                res.send({error: 2})
                 return;
             }
 
