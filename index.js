@@ -607,14 +607,13 @@ app.get('/meeting_rooms', (req, res) => {
         let ref = db.collection('meeting_rooms');
         let roomCollection = await ref.get();
 
-        // console.log("Doc data : ", doc.data());
-
         let rooms_list = []
 
         roomCollection.forEach(room => {
+            // console.log(room.data(), room.id);
             let data = room.data();
             data.id = room.id;
-            rooms_list.push(room.data());
+            rooms_list.push(data);
         });
 
         res.render('meeting_rooms',
