@@ -2,7 +2,7 @@ const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
-// require('dotenv').config()
+require('dotenv').config()
 
 // Imports
 const express = require('express')
@@ -530,7 +530,8 @@ app.post('/ans', (req, res) => {
 
                 await db.collection('users').doc(senderId).set({
 
-                    qa_requesting_id: author_id
+                    qa_requesting_id: author_id,
+                    queued_timestamp: Date.now()
 
                 }, {merge: true});
 
@@ -603,7 +604,7 @@ app.get('/meeting_rooms', (req, res) => {
             return;
         }
 
-        let ref = db.collection('global_vars').doc('meeting_rooms').collection('rooms');
+        let ref = db.collection('meeting_rooms');
         let roomCollection = await ref.get();
 
         // console.log("Doc data : ", doc.data());
@@ -615,8 +616,6 @@ app.get('/meeting_rooms', (req, res) => {
             data.id = room.id;
             rooms_list.push(room.data());
         });
-
-        // console.log(senderId);
 
         res.render('meeting_rooms',
             {
@@ -631,51 +630,301 @@ app.get('/meeting_rooms', (req, res) => {
 app.post('/meeting_rooms', (req, res) => {
     (async () => {
 
-        let params = req.body;
-        let senderMaskId = params.sender_id;
+            console.log(req.body)
 
-        // console.log("Params : ", params);
+            if (req.body.action !== undefined) {
+                console.log("hey");
 
-        if (senderMaskId === undefined) {
-            console.log('nope')
-            res.send({error: 1})
-            return 0;
-        }
+                let data = JSON.parse(req.body.data)
+                console.log(data)
 
-        let ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
-        let doc = await ref.get();
+                for (let pair in data.paired_users) {
+                    for (let mask in pair) {
+                        let ref = db.collection('global_vars').doc('masks')
+                            .collection('users').doc(mask);
+                        let senderId = (await ref.get()).id
 
-        // console.log("hey", doc.data());
+                        bot.sendTextMessage(senderId, 'Bạn chuẩn bị tham gia phòng gặp mặt sau 15 phút nữa, dù muốn hay không')
+                    }
 
-        if (!doc.exists) {
-            console.log("User not found");
-            res.send({error: 1})
-            return 0;
-        }
+                    for (let mask in data.remain_list.length) {
+                        let ref = db.collection('global_vars').doc('masks')
+                            .collection('users').doc(mask);
+                        let senderId = (await ref.get()).id
 
-        let senderId = doc.data().id;
+                        bot.sendTextMessage(senderId, 'Bạn chuẩn bị tham gia phòng gặp mặt sau 15 phút nữa, dù muốn hay không')
+                    }
+                }
 
-        ref = db.collection('users').doc(senderId);
-        let senderData = await ref.get();
+                res.send({error: 0})
 
-        if (params.room_id !== undefined) {
+                setTimeout(async function () {
+                    for (let pair in data.paired_users) {
+                        for (let mask in pair) {
 
-            let meetingRoomId = params.room_id;
+                            ref = db.collection('global_vars').doc('masks').collection('users').doc(mask);
+                            let senderId = (await ref.get()).id
+                            let sender_ref = db.collection('users').doc(senderId);
+                            let senderData = await sender_ref.get();
 
-            if (senderData.data().crr_meeting_room !== null) {
-                bot.sendTextMessage(senderId, "Bạn đang ở trong phòng họp khác")
-                res.send({error: 2})
+
+                            //Check nếu đang trong hàng đợi hoặc đã kết nối hoặc đang request
+                            if (senderData.data().queued_timestamp === null
+                                && senderData.data().crr_timestamp === null
+                                && senderData.data().history_requesting_timestamp === null
+                                && senderData.data().qa_requesting_id === null) {
+                                return 0;
+                            }
+
+                            //Nếu đang kết nối
+                            if (senderData.data().crr_timestamp !== null) {
+
+                                //Hủy kết nối cho partner
+                                await db.collection('users').doc(senderData.data().partner).set({
+                                    partner: null,
+                                    crr_timestamp: null,
+                                    find_gender: null,
+                                }, {merge: true});
+
+                                await sendQuickReply(senderData.data().partner, 'Người kia đã thoát khỏi cuộc trò chuyện ' +
+                                    'để tham gia phòng gặp mặt');
+                            }
+
+                            //Nếu đang request
+                            if (senderData.data().history_requesting_timestamp !== null) {
+
+                                //Hủy lời mời kết nối cho bản thân
+                                await db.collection('users')
+                                    .doc(senderId)
+                                    .collection('history')
+                                    .doc(senderData.data().history_requesting_timestamp.toString())
+                                    .set({
+                                        requested: false
+                                    }, {merge: true});
+
+                                //Query lấy psid người được request
+                                let docRef = db.collection('users')
+                                    .doc(senderId)
+                                    .collection('history')
+                                    .doc(senderData.data().history_requesting_timestamp.toString())
+
+                                let docSnapHistory = await docRef.get();
+
+                                //Hủy lời mời cho người được request
+                                await db.collection('users')
+                                    .doc(docSnapHistory.data().psid)
+                                    .collection('history')
+                                    .doc(docSnapHistory.id).set({
+                                        requesting: false
+                                    }, {merge: true});
+                            }
+
+                            //Reset
+                            await db.collection('users').doc(senderId).set({
+                                    partner: null,
+                                    // nickname: null,
+                                    history_requesting_timestamp: null,
+                                    history_requesting_id: null,
+                                    crr_timestamp: null,
+                                    find_gender: null,
+                                    queued_timestamp: null,
+                                    qa_requesting_id: null,
+                                    crr_meeting_room: null
+                                }, {merge: true}
+                            );
+
+                            //Xóa queue
+                            await db.collection('global_vars').doc('queue').set({
+                                queue_list: FieldValue.arrayRemove(senderId)
+                            }, {merge: true});
+                        }
+
+                        await joinInRoom(pair[0], pair[1])
+                    }
+
+                    for (let i = 0; i < data.remain_list.length; i += 2) {
+                        await joinInRoom(data.remain_list[i], data.remain_list[i + 1])
+                    }
+                }, 15 * 60 * 1000);
+
                 return;
             }
 
-            await ref.set({
-                crr_meeting_room: meetingRoomId
-            }, {merge: true})
+            let params = req.body.data;
+            let senderMaskId = params.id;
+            // console.log(params);
 
-            bot.sendTextMessage(senderId, "Bạn đã đăng ký tham gia phòng thành công");
+            // console.log("Params : ", params);
 
-        } else {
+            if (senderMaskId === undefined) {
+                console.log('nope')
+                res.send({error: 1})
+                return 0;
+            }
+
+            let ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
+            let doc = await ref.get();
+
+            // console.log("hey", doc.data());
+
+            if (!doc.exists) {
+                console.log("User not found");
+                res.send({error: 1})
+                return 0;
+            }
+
+            let senderId = doc.data().id;
+
+            ref = db.collection('users').doc(senderId);
+            let senderData = await ref.get();
+
+            if (isNaN(params.room_participants_number) || 122 < params.room_participants_number || params.room_participants_number < 4 || params.room_participants_number % 2 !== 0) {
+                res.send({error: 3})
+                return
+            }
+
+            await db.collection('meeting_rooms').add({
+                name: params.room_name,
+                description: params.room_description,
+                participants_number: params.room_participants_number,
+                author: senderId,
+                author_nickname: senderData.data().nickname,
+                timestamp: Date.now(),
+                crr_participants: 0
+            })
+
+            res.send({error: 0})
+
 
         }
-    })();
+    )();
 })
+
+async function sendQuickReply(senderId, text) {
+    try {
+        await request({
+            url: 'https://graph.facebook.com/v12.0/me/messages',
+            qs: {
+                access_token: FB_pageToken,
+            },
+            method: 'POST',
+            json: {
+                "recipient": {
+                    "id": senderId,
+                },
+                "messaging_type": "RESPONSE",
+                "message": {
+                    "text": text,
+                    "quick_replies": [
+                        {
+                            "content_type": "text",
+                            "title": "Tìm kiếm",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://icons-for-free.com/iconfiles/png/512/search-131964753234672616.png"
+                        },
+                        {
+                            "content_type": "text",
+                            "title": "Tìm nam",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://icons.iconarchive.com/icons/custom-icon-design/flatastic-7/512/Male-icon.png"
+                        }, {
+                            "content_type": "text",
+                            "title": "Tìm nữ",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://icons.iconarchive.com/icons/custom-icon-design/flatastic-7/512/Female-icon.png"
+                        }, {
+                            "content_type": "text",
+                            "title": "Lệnh",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://image.flaticon.com/icons/png/512/59/59130.png"
+                        }, {
+                            "content_type": "text",
+                            "title": "Hồ sơ",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://cdn.iconscout.com/icon/free/png-256/profile-417-1163876.png"
+                        }, {
+                            "content_type": "text",
+                            "title": "Tìm kiếm nâng cao",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://static.thenounproject.com/png/2161054-200.png"
+                        }, {
+                            "content_type": "text",
+                            "title": "Tìm câu hỏi",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://icon-library.com/images/question-icon/question-icon-0.jpg"
+                        }, {
+                            "content_type": "text",
+                            "title": "Câu hỏi của tôi",
+                            "payload": "RANDOM_PAYLOAD",
+                            "image_url": "https://i.imgur.com/YwjvVyv.png"
+                        },
+                    ]
+                }
+            }
+        });
+    } catch (e) {
+        console.log("Error at sendQuickReply : ", e);
+    }
+}
+
+async function joinInRoom(senderId, gettedId) {
+    let timestamp = Date.now();
+
+    await db.collection('users').doc(senderId).set({
+        partner: gettedId,
+        history_requesting_timestamp: null,
+        history_requesting_id: null,
+        crr_timestamp: timestamp,
+        last_connect: gettedId,
+        queued_timestamp: null,
+        find_gender: null,
+        qa_requesting_id: null,
+    }, {merge: true});
+
+    let docRef = db.collection('users').doc(gettedId);
+    let docSnap = await docRef.get();
+
+    await db.collection('users', senderId, 'history').doc(timestamp.toString()).set({
+        timestamp: timestamp,
+        psid: gettedId,
+        tags: null,
+        nickname: docSnap.data().nickname,
+        set_nickname: null,
+        fb_link: null,
+        img: null,
+        requested: false,
+        requesting: false,
+    }, {merge: true});
+
+    await db.collection('users').doc(gettedId).set({
+        partner: senderId,
+        history_requesting_timestamp: null,
+        history_requesting_id: null,
+        crr_timestamp: timestamp,
+        last_connect: senderId,
+        queued_timestamp: null,
+        find_gender: null,
+        qa_requesting_id: null,
+
+    }, {merge: true});
+
+    docRef = db.collection('users').doc(senderId);
+    docSnap = await docRef.get();
+
+    await db.collection('users').doc(gettedId).collection('history')
+        .doc(timestamp.toString()).set({
+            timestamp: timestamp,
+            psid: senderId,
+            tags: null,
+            nickname: docSnap.data().nickname,
+            set_nickname: null,
+            fb_link: null,
+            img: null,
+            requested: false,
+            requesting: false,
+        }, {merge: true});
+
+    await bot.sendTextMessage(senderId, 'Bạn đã được kết nối. Nói lời chào với người bạn mới đi nào');
+    await bot.sendTextMessage(gettedId, 'Bạn đã được kết nối. Nói lời chào với người bạn mới đi nào');
+
+}

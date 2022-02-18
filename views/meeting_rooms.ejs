@@ -56,7 +56,8 @@
                             <input type="text" aria-label="room-name-label" class="form-control"
                                    placeholder="Tên phòng" id="room-name">
                             <input type="number" aria-label="room-participants-number-label" class="form-control"
-                                   placeholder="Số thành viên" min="10" max="100" id="room-participants-number">
+                                   placeholder="Số thành viên" min="10" max="100" id="room-participants-number"
+                                   value="10">
                         </div>
 
                         <div class="input-group flex-nowrap p-3 m-1 input-group-lg">
@@ -110,13 +111,27 @@
         for (let room in rooms_list) {
 
             let room_data = rooms_list[room];
+            rooms_list_groups_innerHTML += "<ul class=\"list-group\  id=\"" + room_data.id + "\">";
+
             rooms_list_groups_innerHTML +=
-                "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\" id=\"" + cnt.toString() + "\">" +
-                "    <h2 class=\"h4 text-muted mb-1 alas\">" + room_data.name + " - " + room_data.description + "</h2>\n" +
+                "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                "    <h2 class=\"h4 text-muted mb-1 alas\">" + room_data.name + "</h2>\n" +
                 " <div class=\"mb-2\"> &nbsp; </div>" +
-                "        <p class=\"h4 small  font-italic mb-4\">" + room_data.author + " - " + timeConverter(room_data.timestamp) + "</p>\n" +
+                "        <p class=\"h4 small  font-italic mb-4\">" + room_data.author_nickname + " - " + timeConverter(room_data.timestamp) + "</p>\n" +
                 " <div class=\"mb-2\"> &nbsp; </div>";
-            rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"joinRoomRequest(" + room_data.id + ")\"> Kết nối </button>\n";
+            rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" " +
+                "onclick=\"window.open('https://share.streamlit.io/nnv2205owo/chatventure_matchmaker/main/main.py?id=" + sender_id + "&room_id=" + room_data.id + "', '_blank')\"> Tham gia </button>\n";
+
+            rooms_list_groups_innerHTML += "</li>"
+
+            rooms_list_groups_innerHTML +=
+                "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                "    <p class=\"p text-muted mb-1 alas p-3 m-1\">" + room_data.description + "</p>\n" +
+                "<div>" +
+                "    <span class=\"badge badge-primary badge-pill\">" + room_data.participants_number + " thành viên tổng thể của phòng</span>\n" +
+                "    <span class=\"badge badge-warning badge-pill\">" + room_data.crr_participants + " thành viên đã tham gia</span>\n" +
+                "</div>"
+
 
             rooms_list_groups_innerHTML += "</li>"
 
@@ -142,7 +157,12 @@
             case 2:
                 alert("Bạn đang ở trong phòng họp khác");
                 break;
-
+            case 3:
+                alert("Dù bạn có làm gì thì số người vẫn phải lớn hơn 4 bé hơn 122 và là số chẵn");
+                break;
+            default:
+                alert("Thành công");
+                break;
         }
     }
 
@@ -165,31 +185,22 @@
 
     }
 
-    function joinRoomRequest(room_id) {
-
-        let data = {
-            room_id: room_id,
-            sender_id: sender_id
-        };
-
-        postRequest('', data);
-    }
-
     function createNewMeetingRoom() {
 
         let data = {
             room_name: document.getElementById("room-name").value,
             room_description: document.getElementById("room-description").value,
-            room_participants_number: document.getElementById("room-participants-number").value,
-            sender_id: sender_id
+            room_participants_number: parseInt(document.getElementById("room-participants-number").value),
+            id: sender_id
         }
 
-        if (!Number.isInteger(data.room_participants_number) || 222 < data.room_participants_number || data.room_participants_number < 10) {
+        if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 4 || data.room_participants_number % 2 !== 0) {
             alert("Số thành viên tham gia phải lớn hơn 10 và bé hơn 222");
             return;
         }
 
         postRequest('', data);
+        window.location.reload(true);
     }
 
     function timeConverter(timestamp) {
