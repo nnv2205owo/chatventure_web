@@ -784,7 +784,7 @@ app.post('/meeting_rooms', (req, res) => {
 
                 await ref.set({
                     authenticated_users: FieldValue.arrayUnion(senderMaskId)
-                })
+                }, {merge: true})
 
                 return;
             }
