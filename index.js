@@ -605,7 +605,7 @@ app.get('/meeting_rooms', (req, res) => {
         }
 
         let ref = db.collection('meeting_rooms');
-        let roomCollection = await ref.get();
+        let roomCollection = await ref.orderBy('timestamp', 'desc').get();
 
         let rooms_list = []
 
@@ -629,7 +629,7 @@ app.get('/meeting_rooms', (req, res) => {
 app.post('/meeting_rooms', (req, res) => {
     (async () => {
 
-            console.log(req.body)
+            // console.log(req.body)
 
             if (req.body.action !== undefined) {
                 console.log("hey");
@@ -761,6 +761,34 @@ app.post('/meeting_rooms', (req, res) => {
                 return 0;
             }
 
+            if (params.room_id !== undefined) {
+                let ref = db.collection('meeting_rooms').doc(params.room_id);
+                let doc = await ref.get();
+                if (!doc.exists) {
+                    res.send({error: 5});
+                    return
+                }
+
+                let room_data = doc.data()
+                if (room_data.password !== params.room_password) {
+                    // console.log(room_data, params.room_password)
+                    res.send({error: 4})
+                    return
+                }
+
+                res.send({
+                    error: 6,
+                    url: "https://share.streamlit.io/nnv2205owo/chatventure_matchmaker/main/main.py" +
+                        "?id=" + senderMaskId + "&room_id=" + params.room_id
+                })
+
+                await ref.set({
+                    authenticated_users: FieldValue.arrayUnion(senderMaskId)
+                })
+
+                return;
+            }
+
             let ref = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
             let doc = await ref.get();
 
@@ -789,6 +817,8 @@ app.post('/meeting_rooms', (req, res) => {
                 author: senderId,
                 author_nickname: senderData.data().nickname,
                 timestamp: Date.now(),
+                authenticated_users: [senderMaskId],
+                password: params.room_password,
                 crr_participants: 0
             })
 

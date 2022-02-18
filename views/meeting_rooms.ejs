@@ -51,10 +51,12 @@
 
                         <div class="input-group flex-nowrap p-3 m-1">
                             <div class="input-group-prepend">
-                                <span class="input-group-text">Tên phòng và số thành viên (10 - 222)</span>
+                                <span class="input-group-text">Tên phòng, mật khẩu và số thành viên (10 - 222)</span>
                             </div>
                             <input type="text" aria-label="room-name-label" class="form-control"
                                    placeholder="Tên phòng" id="room-name">
+                            <input type="password" aria-label="room-password-label" class="form-control"
+                                   placeholder="Mật khẩu" id="room-password">
                             <input type="number" aria-label="room-participants-number-label" class="form-control"
                                    placeholder="Số thành viên" min="10" max="100" id="room-participants-number"
                                    value="10">
@@ -111,6 +113,7 @@
         for (let room in rooms_list) {
 
             let room_data = rooms_list[room];
+
             rooms_list_groups_innerHTML += "<ul class=\"list-group\  id=\"" + room_data.id + "\">";
 
             rooms_list_groups_innerHTML +=
@@ -120,14 +123,22 @@
                 "        <p class=\"h4 small  font-italic mb-4\">" + room_data.author_nickname + " - " + timeConverter(room_data.timestamp) + "</p>\n" +
                 " <div class=\"mb-2\"> &nbsp; </div>";
             rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" " +
-                "onclick=\"window.open('https://share.streamlit.io/nnv2205owo/chatventure_matchmaker/main/main.py?id=" + sender_id + "&room_id=" + room_data.id + "', '_blank')\"> Tham gia </button>\n";
+                "onclick=\"checkPass('" + room_data.id + "')\"> Tham gia </button>\n";
 
-            rooms_list_groups_innerHTML += "</li>"
+            rooms_list_groups_innerHTML += "</li>" +
+                "<li>" +
+                "<div class=\"input-group-prepend\">\n" +
+                "                                <span class=\"input-group-text\" id=\"room-password-addon-wrapping\">Mật khẩu phòng</span>\n" +
+                " <input type=\"text\" aria-label=\"room-password-label\" class=\"form-control\"\n" +
+                "                                   placeholder=\"Mật khẩu\" id=\"room-password-" + room_data.id + "\">" +
+                "                            </div>" +
+                "</li>";
 
             rooms_list_groups_innerHTML +=
                 "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
                 "    <p class=\"p text-muted mb-1 alas p-3 m-1\">" + room_data.description + "</p>\n" +
                 "<div>" +
+
                 "    <span class=\"badge badge-primary badge-pill\">" + room_data.participants_number + " thành viên tổng thể của phòng</span>\n" +
                 "    <span class=\"badge badge-warning badge-pill\">" + room_data.crr_participants + " thành viên đã tham gia</span>\n" +
                 "</div>"
@@ -160,7 +171,16 @@
             case 3:
                 alert("Dù bạn có làm gì thì số người vẫn phải lớn hơn 4 bé hơn 122 và là số chẵn");
                 break;
-            default:
+            case 4:
+                alert("Sai mật khẩu")
+                break;
+            case 5:
+                alert("Too late. Phòng này không còn tồn tại")
+                break;
+            case 6:
+                window.open(response.url, '_blank')
+                break;
+            case 0:
                 alert("Thành công");
                 break;
         }
@@ -191,29 +211,41 @@
             room_name: document.getElementById("room-name").value,
             room_description: document.getElementById("room-description").value,
             room_participants_number: parseInt(document.getElementById("room-participants-number").value),
+            room_password: document.getElementById("room-password").value,
             id: sender_id
         }
 
         if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 4 || data.room_participants_number % 2 !== 0) {
-            alert("Số thành viên tham gia phải lớn hơn 10 và bé hơn 222");
+            alert("Số thành viên tham gia phải lớn hơn 4 và bé hơn 222 và là số chẵn");
             return;
         }
 
+        location.reload(true);
+
         postRequest('', data);
-        window.location.reload(true);
+    }
+
+    function checkPass(roomId) {
+        let data = {
+            id: sender_id,
+            room_id: roomId,
+            room_password: document.getElementById("room-password-" + roomId).value
+        }
+
+        postRequest('', data);
     }
 
     function timeConverter(timestamp) {
-        var a = new Date(timestamp);
-        // var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        // var year = a.getFullYear();
-        // var month = months[a.getMonth()];
-        // var date = a.getDate();
-        // var hour = a.getHours();
-        // var min = a.getMinutes();
-        // var sec = a.getSeconds();
-        // return date + " " + month + " " + year + " " + hour + ":" + min + ":" + sec;
-        return a.toLocaleString("vi-VN", {timeZone: "Asia/Ho_Chi_Minh"});
+        // var a = new Date(timestamp);
+        // // var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // // var year = a.getFullYear();
+        // // var month = months[a.getMonth()];
+        // // var date = a.getDate();
+        // // var hour = a.getHours();
+        // // var min = a.getMinutes();
+        // // var sec = a.getSeconds();
+        // // return date + " " + month + " " + year + " " + hour + ":" + min + ":" + sec;
+        // return a.toLocaleString("vi-VN", {timeZone: "Asia/Ho_Chi_Minh"});
     }
 
 </script>

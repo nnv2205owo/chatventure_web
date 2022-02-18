@@ -85,7 +85,7 @@
                 "        <p class=\"h4 small  font-italic mb-4\">" + answer_data.author + " - " + timeConverter(answer_data.timestamp) + "</p>\n" +
                 " <div class=\"mb-2\"> &nbsp; </div>";
             if (answer_data.isAnsAuthor) answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-warning\"\"> Bạn là tác giả của câu trả lời này </button>\n"
-            else answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"sendARequest(" + answer_data.id + ")\"> Kết nối </button>\n";
+            else answers_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"sendARequest('" + answer_data.id + "')\"> Kết nối </button>\n";
             answers_list_groups_innerHTML += "</li>"
 
             // document.getElementById(cnt.toString()).onclick = function () {
