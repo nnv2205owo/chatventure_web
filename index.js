@@ -2,12 +2,12 @@ const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
-// require('dotenv').config()
+require('dotenv').config()
 
 // Imports
 const express = require('express')
 const app = express()
-var server = require('http').createServer(app);
+
 app.use(express.json());       // to support JSON-encoded bodies
 app.use(express.urlencoded({extended: true})); // to support URL-encoded bodies
 
@@ -18,13 +18,6 @@ const
     FB_validationToken = process.env.FB_validationToken,
     FB_pageToken = process.env.FB_pageToken;
 
-var bot = MessengerPlatform.create({
-    pageID: FB_pageId,
-    appID: FB_appId,
-    appSecret: FB_appSecret,
-    validationToken: FB_validationToken,
-    pageToken: FB_pageToken
-}, server);
 
 const tag_list = {
     'Bóng đá': {
@@ -66,9 +59,6 @@ const tag_list = {
 
 }
 
-// Listen on Port 5000
-app.listen(process.env.PORT || 3000);
-
 // Static Files
 app.use(express.static('./'));
 
@@ -78,6 +68,28 @@ app.use(express.static('./'));
 // Set View's
 app.set('views', './views');
 app.set('view engine', 'ejs');
+
+var server = require('http').createServer(app);
+
+var bot = MessengerPlatform.create({
+    pageID: FB_pageId,
+    appID: FB_appId,
+    appSecret: FB_appSecret,
+    validationToken: FB_validationToken,
+    pageToken: FB_pageToken
+}, server);
+
+const {Server} = require("socket.io");
+const io = new Server(server);
+
+
+server.listen(process.env.PORT || 3000);
+
+
+io.on('connection', socket => {
+    console.log("New user connected")
+})
+
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_serviceAccount)
 
@@ -93,6 +105,10 @@ const firebase_app = initializeApp({
 });
 
 const db = getFirestore();
+
+app.get('/', (req, res) => {
+    res.render('index')
+})
 
 // Navigation
 app.get('/advance_search', (req, res) => {
@@ -630,7 +646,7 @@ app.get('/meeting_rooms', (req, res) => {
             let data = room.data();
             data.id = room.id;
 
-            data.isAuthor = data.author === senderId;
+            data.isAuthor = data.author === senderMaskId;
 
             if (data.id === senderData.data().crr_meeting_room) {
                 data.joined = true;
@@ -842,7 +858,7 @@ app.post('/meeting_rooms', (req, res) => {
                 name: params.room_name,
                 description: params.room_description,
                 participants_number: params.room_participants_number,
-                author: senderId,
+                author: senderMaskId,
                 author_nickname: senderData.data().nickname,
                 timestamp: Date.now(),
                 authenticated_users: [senderMaskId],
@@ -893,7 +909,7 @@ app.get('/game_rooms', (req, res) => {
             let data = room.data();
             data.id = room.id;
 
-            data.isAuthor = data.author === senderId;
+            data.isAuthor = data.author === senderMaskId;
 
             if (data.id === senderData.data().crr_game_room) {
                 data.joined = true;
@@ -961,26 +977,41 @@ app.post('/game_rooms', (req, res) => {
                 let room_data = doc.data()
                 if (room_data.password !== params.room_password) {
                     // console.log(room_data, params.room_password)
-                    res.send({error: 4})
+                    res.send({error: 4});
                     return
                 }
 
                 if (senderData.data().crr_game_room !== null && senderData.data().crr_game_room !== undefined) {
                     await db.collection('game_rooms').doc(senderData.data().crr_game_room).set({
                         crr_participants: FieldValue.increment(-1),
+                    }, {merge: true});
+                }
+
+                if (room_data.crr_participants === room_data.participants_number - 1) {
+
+                    await db.collection('games').add({
+                        name: room_data.name,
+                        description: room_data.description,
+                        player_number: room_data.participants_number,
+                        ready_player: 0,
+                        timestamp: Date.now(),
+                    })
+
+                    await ref.delete()
+
+                } else {
+
+                    await ref.set({
+                        crr_participants: FieldValue.increment(1),
+                    }, {merge: true});
+
+                    await userRef.set({
+                        crr_game_room: params.room_id,
+                        game_nickname: params.nickname,
+                        game_realname: params.realname
                     }, {merge: true})
 
                 }
-
-                await ref.set({
-                    crr_participants: FieldValue.increment(1),
-                }, {merge: true})
-
-                await userRef.set({
-                    crr_game_room: params.room_id,
-                    game_nickname: params.nickname,
-                    game_realname: params.realname
-                }, {merge: true})
 
                 res.send({error: 0})
                 return;
@@ -1013,7 +1044,52 @@ app.post('/game_rooms', (req, res) => {
                 return;
             }
 
-            if (isNaN(params.room_participants_number) || 122 < params.room_participants_number || params.room_participants_number < 4) {
+            if (params.action === 'remove') {
+                let ref = db.collection('game_rooms').doc(params.room_id);
+                let doc = await ref.get();
+                if (!doc.exists) {
+                    res.send({error: 5});
+                    return
+                }
+
+                let room_data = await ref.get();
+
+                // console.log(room_data.data().author, params.id)
+
+                if (room_data.data().author !== params.id) {
+                    res.send({error: 7})
+                    return;
+                }
+
+                let roomPlayerCollection = await db.collection('users')
+                    .where('crr_game_room', '==', params.room_id)
+                    .get();
+
+                roomPlayerCollection.forEach(player => {
+                    // console.log(quest.id, '=>', quest.data());
+                    (async () => {
+                        await bot.sendTextMessage(player.id, 'Phòng game hiện tại bạn đang tham gia đã bị xóa')
+                        await db.collection('users').doc(player.id).set({
+                            crr_game_room: null,
+                            game_nickname: null,
+                            game_realname: null
+                        }, {merge: true});
+                    })();
+                });
+
+                await userRef.set({
+                    crr_game_room: null,
+                    game_nickname: null,
+                    game_realname: null
+                }, {merge: true})
+
+                await db.collection('game_rooms').doc(params.room_id).delete()
+
+                res.send({error: 0})
+                return;
+            }
+
+            if (isNaN(params.room_participants_number) || 122 < params.room_participants_number || params.room_participants_number < 2) {
                 res.send({error: 3})
                 return
             }
@@ -1022,7 +1098,7 @@ app.post('/game_rooms', (req, res) => {
                 name: params.room_name,
                 description: params.room_description,
                 participants_number: params.room_participants_number,
-                author: senderId,
+                author: senderMaskId,
                 author_nickname: senderData.data().nickname,
                 timestamp: Date.now(),
                 password: params.room_password,
@@ -1031,9 +1107,15 @@ app.post('/game_rooms', (req, res) => {
 
             res.send({error: 0})
 
-
         }
     )();
+})
+
+// Navigation
+app.get('/game', (req, res) => {
+    (async () => {
+        res.render('game')
+    })();
 })
 
 async function sendQuickReply(senderId, text) {

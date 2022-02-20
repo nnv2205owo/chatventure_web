@@ -52,7 +52,7 @@
 
                         <div class="input-group flex-nowrap p-3 m-1">
                             <div class="input-group-prepend">
-                                <span class="input-group-text">Nickname và Tên thật của bạn</span>
+                                <span class="input-group-text"> Đó là? </span>
                             </div>
                             <input type="text" aria-label="room-name-label" class="form-control"
                                    placeholder="Nickname" id="nickname">
@@ -82,7 +82,7 @@
                                    placeholder="Số thành viên" min="10" max="100" id="room-participants-number">
                         </div>
 
-                        <div class="input-group flex-nowrap p-3 m-1 input-group-lg">
+                        <div class="input-group flex-nowrap input-group-lg p-3 m-1">
                             <div class="input-group-prepend">
                                 <span class="input-group-text" id="room-description-addon-wrapping">Mô tả</span>
                             </div>
@@ -153,6 +153,10 @@
                 rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-warning\" " +
                     "onclick=\"outGame('" + room_data.id + "')\"> Thoát khỏi phòng </button>\n";
 
+            if (room_data.isAuthor)
+                rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-danger\" " +
+                    "onclick=\"removeGame('" + room_data.id + "')\"> Xóa phòng </button>\n";
+
             rooms_list_groups_innerHTML += "</li>" +
                 "<li>" +
                 "<div class=\"input-group-prepend\">\n" +
@@ -194,7 +198,7 @@
                 alert("Wait what who r u");
                 break;
             case 2:
-                alert("Bạn đang ở trong phòng họp khác");
+                alert("Bạn đang ở trong phòng chơi khác");
                 break;
             case 3:
                 alert("Dù bạn có làm gì thì số người vẫn phải lớn hơn 4 bé hơn 122");
@@ -207,6 +211,9 @@
                 break;
             case 6:
                 alert("Bạn hiện đang không tham gia phòng này")
+                break;
+            case 7:
+                alert("Bạn không có quyền để thực hiện hành động này")
                 break;
             case 0:
                 alert("Thành công");
@@ -243,7 +250,7 @@
             id: sender_id
         }
 
-        if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 4) {
+        if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 2) {
             alert("Số thành viên tham gia phải lớn hơn 4 và bé hơn 122");
             return;
         }
@@ -272,6 +279,16 @@
     function outGame(roomId) {
         let data = {
             action: 'out',
+            id: sender_id,
+            room_id: roomId
+        }
+
+        postRequest('', data);
+    }
+
+    function removeGame(roomId) {
+        let data = {
+            action: 'remove',
             id: sender_id,
             room_id: roomId
         }

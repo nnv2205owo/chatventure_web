@@ -16,7 +16,8 @@
     "facebook-bot-messenger": "^1.0.9",
     "firebase-admin": "^10.0.2",
     "fireboost": "^1.0.2",
-    "request": "^2.88.2"
+    "request": "^2.88.2",
+    "socket.io": "^4.4.1"
   },
   "devDependencies": {
     "dotenv": "^16.0.0",
