@@ -48,6 +48,27 @@
             <div class="col-lg-12 mx-auto">
                 <div class="card shadow border-0 mb-5">
                     <div class="card-body p-5">
+                        <h4 class="header text-center"> Nickname và tên thật của bạn trong game</h4>
+
+                        <div class="input-group flex-nowrap p-3 m-1">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">Nickname và Tên thật của bạn</span>
+                            </div>
+                            <input type="text" aria-label="room-name-label" class="form-control"
+                                   placeholder="Nickname" id="nickname">
+                            <input type="text" aria-label="room-name-label" class="form-control"
+                                   placeholder="Tên thật" id="realname">
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-12 mx-auto">
+                <div class="card shadow border-0 mb-5">
+                    <div class="card-body p-5">
+
+                        <h4 class="header text-center"> Tạo phòng chơi </h4>
 
                         <div class="input-group flex-nowrap p-3 m-1">
                             <div class="input-group-prepend">
@@ -74,7 +95,7 @@
                         <div class="input-group flex-nowrap p-3 m-1">
 
                             <button type="button" class="btn btn-outline-primary btn-lg btn-block"
-                                    id="create-new-meeting-room" onclick="createNewMeetingRoom()">
+                                    id="create-new-meeting-room" onclick="createNewGameRoom()">
                                 Tạo room mới
                             </button>
 
@@ -83,6 +104,7 @@
                     </div>
                 </div>
             </div>
+
         </div>
 
         <div class="row" id="list_groups">
@@ -105,8 +127,8 @@
 
     if (rooms_list.length === 0) {
         rooms_list_groups_innerHTML += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
-            "    <h2 class=\"h4 mb-1\">Hiện tại đang không có phòng gặp mặt nào</h2>\n" +
-            "        <p class=\"small text-muted font-italic mb-4\">Hãy đến đây vào lúc khác (Hoặc tự tạo cho bản thân 1 phòng mới)</p>\n";
+            "    <h2 class=\"h4 mb-1\">Chưa có phòng game nào đang hoạt động hiện tại</h2>\n" +
+            "        <p class=\"small text-muted font-italic mb-4\">Tổ chức 1 round bằng cách tạo phòng ở trên</p>\n";
         "</li>"
     } else {
         for (let room in rooms_list) {
@@ -121,8 +143,15 @@
                 " <div class=\"mb-2\"> &nbsp; </div>" +
                 "        <p class=\"h4 small  font-italic mb-4\">" + room_data.author_nickname + " - " + timeConverter(room_data.timestamp) + "</p>\n" +
                 " <div class=\"mb-2\"> &nbsp; </div>";
-            rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" " +
-                "onclick=\"checkPass('" + room_data.id + "')\"> Tham gia </button>\n";
+
+            // console.log(room_data)
+
+            if (!room_data.joined)
+                rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" " +
+                    "onclick=\"joinGame('" + room_data.id + "')\"> Tham gia </button>\n";
+            else
+                rooms_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-warning\" " +
+                    "onclick=\"outGame('" + room_data.id + "')\"> Thoát khỏi phòng </button>\n";
 
             rooms_list_groups_innerHTML += "</li>" +
                 "<li>" +
@@ -168,7 +197,7 @@
                 alert("Bạn đang ở trong phòng họp khác");
                 break;
             case 3:
-                alert("Dù bạn có làm gì thì số người vẫn phải lớn hơn 4 bé hơn 122 và là số chẵn");
+                alert("Dù bạn có làm gì thì số người vẫn phải lớn hơn 4 bé hơn 122");
                 break;
             case 4:
                 alert("Sai mật khẩu")
@@ -177,7 +206,7 @@
                 alert("Too late. Phòng này không còn tồn tại")
                 break;
             case 6:
-                window.open(response.url, '_blank')
+                alert("Bạn hiện đang không tham gia phòng này")
                 break;
             case 0:
                 alert("Thành công");
@@ -204,7 +233,7 @@
 
     }
 
-    function createNewMeetingRoom() {
+    function createNewGameRoom() {
 
         let data = {
             room_name: document.getElementById("room-name").value,
@@ -214,19 +243,37 @@
             id: sender_id
         }
 
-        if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 4 || data.room_participants_number % 2 !== 0) {
-            alert("Số thành viên tham gia phải lớn hơn 4 và bé hơn 222 và là số chẵn");
+        if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 4) {
+            alert("Số thành viên tham gia phải lớn hơn 4 và bé hơn 122");
             return;
         }
 
         postRequest('', data);
     }
 
-    function checkPass(roomId) {
+    function joinGame(roomId) {
         let data = {
+            action: 'join',
             id: sender_id,
             room_id: roomId,
-            room_password: document.getElementById("room-password-" + roomId).value
+            room_password: document.getElementById("room-password-" + roomId).value,
+            nickname: document.getElementById("nickname").value,
+            realname: document.getElementById("realname").value,
+        }
+
+        if (data.nickname === '' || data.realname === '') {
+            alert('Bạn chưa nhập nickname và tên thật');
+            return
+        }
+
+        postRequest('', data);
+    }
+
+    function outGame(roomId) {
+        let data = {
+            action: 'out',
+            id: sender_id,
+            room_id: roomId
         }
 
         postRequest('', data);
@@ -234,14 +281,14 @@
 
     function timeConverter(timestamp) {
         var a = new Date(timestamp);
-        // var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        // var year = a.getFullYear();
-        // var month = months[a.getMonth()];
-        // var date = a.getDate();
-        // var hour = a.getHours();
-        // var min = a.getMinutes();
-        // var sec = a.getSeconds();
-        // return date + " " + month + " " + year + " " + hour + ":" + min + ":" + sec;
+        // // var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        // // var year = a.getFullYear();
+        // // var month = months[a.getMonth()];
+        // // var date = a.getDate();
+        // // var hour = a.getHours();
+        // // var min = a.getMinutes();
+        // // var sec = a.getSeconds();
+        // // return date + " " + month + " " + year + " " + hour + ":" + min + ":" + sec;
         return a.toLocaleString("vi-VN", {timeZone: "Asia/Ho_Chi_Minh"});
     }
 
@@ -251,5 +298,6 @@
     .alas {
         word-break: break-all;
     }
+
 </style>
 </html>

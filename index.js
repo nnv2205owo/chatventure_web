@@ -2,7 +2,7 @@ const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
 const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
-// require('dotenv').config()
+require('dotenv').config()
 
 // Imports
 const express = require('express')
@@ -604,7 +604,23 @@ app.get('/meeting_rooms', (req, res) => {
             return;
         }
 
-        let ref = db.collection('meeting_rooms');
+        let userRef = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
+        let doc = await userRef.get();
+
+        // console.log("hey", doc.data());
+
+        if (!doc.exists) {
+            console.log("User not found");
+            res.send('really?')
+            return 0;
+        }
+
+        let senderId = doc.data().id;
+
+        userRef = db.collection('users').doc(senderId);
+        let senderData = await userRef.get();
+
+        let ref = db.collection('game_rooms');
         let roomCollection = await ref.orderBy('timestamp', 'desc').get();
 
         let rooms_list = []
@@ -613,7 +629,17 @@ app.get('/meeting_rooms', (req, res) => {
             // console.log(room.data(), room.id);
             let data = room.data();
             data.id = room.id;
-            rooms_list.push(data);
+
+            data.isAuthor = data.author === senderId;
+
+            if (data.id === senderData.data().crr_meeting_room) {
+                data.joined = true;
+                rooms_list.unshift(data)
+            } else {
+                data.joined = false;
+                rooms_list.push(data);
+            }
+
         });
 
         res.render('meeting_rooms',
@@ -786,6 +812,8 @@ app.post('/meeting_rooms', (req, res) => {
                     authenticated_users: FieldValue.arrayUnion(senderMaskId)
                 }, {merge: true})
 
+                res.send({error: 0})
+
                 return;
             }
 
@@ -818,6 +846,185 @@ app.post('/meeting_rooms', (req, res) => {
                 author_nickname: senderData.data().nickname,
                 timestamp: Date.now(),
                 authenticated_users: [senderMaskId],
+                password: params.room_password,
+                crr_participants: 0
+            })
+
+            res.send({error: 0})
+
+
+        }
+    )();
+})
+
+// Navigation
+app.get('/game_rooms', (req, res) => {
+    (async () => {
+        let senderMaskId = req.query.id;
+        if (senderMaskId === undefined) {
+            console.log('nope')
+            res.send("Wha");
+            return;
+        }
+
+        let userRef = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
+        let doc = await userRef.get();
+
+        // console.log("hey", doc.data());
+
+        if (!doc.exists) {
+            console.log("User not found");
+            res.send('really?')
+            return 0;
+        }
+
+        let senderId = doc.data().id;
+
+        userRef = db.collection('users').doc(senderId);
+        let senderData = await userRef.get();
+
+        let ref = db.collection('game_rooms');
+        let roomCollection = await ref.orderBy('timestamp', 'desc').get();
+
+        let rooms_list = []
+
+        roomCollection.forEach(room => {
+            // console.log(room.data(), room.id);
+            let data = room.data();
+            data.id = room.id;
+
+            data.isAuthor = data.author === senderId;
+
+            if (data.id === senderData.data().crr_game_room) {
+                data.joined = true;
+                rooms_list.unshift(data)
+            } else {
+                data.joined = false;
+                rooms_list.push(data);
+            }
+
+            // console.log(senderData.data())
+            // console.log(data)
+
+        });
+
+        res.render('game_rooms',
+            {
+                rooms_list: JSON.stringify(rooms_list),
+                sender_id: JSON.stringify(senderMaskId)
+            })
+
+
+    })();
+})
+
+app.post('/game_rooms', (req, res) => {
+    (async () => {
+
+            let params = req.body.data;
+            let senderMaskId = params.id;
+            // console.log(params);
+
+            // console.log("Params : ", params);
+
+            if (senderMaskId === undefined) {
+                console.log('nope')
+                res.send({error: 1})
+                return 0;
+            }
+
+            let userRef = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
+            let doc = await userRef.get();
+
+            // console.log("hey", doc.data());
+
+            if (!doc.exists) {
+                console.log("User not found");
+                res.send({error: 1})
+                return 0;
+            }
+
+            let senderId = doc.data().id;
+
+            userRef = db.collection('users').doc(senderId);
+            let senderData = await userRef.get();
+
+
+            if (params.action === 'join') {
+                let ref = db.collection('game_rooms').doc(params.room_id);
+                let doc = await ref.get();
+                if (!doc.exists) {
+                    res.send({error: 5});
+                    return
+                }
+
+                let room_data = doc.data()
+                if (room_data.password !== params.room_password) {
+                    // console.log(room_data, params.room_password)
+                    res.send({error: 4})
+                    return
+                }
+
+                if (senderData.data().crr_game_room !== null && senderData.data().crr_game_room !== undefined) {
+                    await db.collection('game_rooms').doc(senderData.data().crr_game_room).set({
+                        crr_participants: FieldValue.increment(-1),
+                    }, {merge: true})
+
+                }
+
+                await ref.set({
+                    crr_participants: FieldValue.increment(1),
+                }, {merge: true})
+
+                await userRef.set({
+                    crr_game_room: params.room_id,
+                    game_nickname: params.nickname,
+                    game_realname: params.realname
+                }, {merge: true})
+
+                res.send({error: 0})
+                return;
+            }
+
+            if (params.action === 'out') {
+                let ref = db.collection('game_rooms').doc(params.room_id);
+                let doc = await ref.get();
+                if (!doc.exists) {
+                    res.send({error: 5});
+                    return
+                }
+
+                if (senderData.data().crr_game_room !== params.room_id) {
+                    res.send({error: 6})
+                    return;
+                }
+
+                await db.collection('game_rooms').doc(params.room_id).set({
+                    crr_participants: FieldValue.increment(-1),
+                }, {merge: true})
+
+                await userRef.set({
+                    crr_game_room: null,
+                    game_nickname: null,
+                    game_realname: null
+                }, {merge: true})
+
+                res.send({error: 0})
+                return;
+            }
+
+            if (isNaN(params.room_participants_number) || 122 < params.room_participants_number || params.room_participants_number < 4) {
+                res.send({error: 3})
+                return
+            }
+
+            await db.collection('game_rooms').add({
+                name: params.room_name,
+                description: params.room_description,
+                participants_number: params.room_participants_number,
+                author: senderId,
+                author_nickname: senderData.data().nickname,
+                timestamp: Date.now(),
                 password: params.room_password,
                 crr_participants: 0
             })
