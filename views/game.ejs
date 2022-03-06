@@ -39,8 +39,24 @@
             </p>
         </header>
     </div>
+
+    <div class="container pt-4">
+        <time>
+            <canvas id="hours" width="80" height="80"></canvas>
+            <canvas id="minutes" width="80" height="80">
+            </canvas>
+            <canvas id="seconds" width="80" height="80"></canvas>
+            <canvas id="milliseconds" width="80" height="80">
+            </canvas>
+        </time>
+    </div>
+
 </section>
 
+<section class="main-content" id="leaderboard">
+
+
+</section>
 
 <section>
     <div class="container">
@@ -54,11 +70,738 @@
 
     var socket = io.connect('http://localhost:3000');
 
+    var game_list_groups = document.getElementById('list_groups');
+
+    var data = <%- data %>;
+    var gameId = data.game_id;
+    var senderId = data.sender_id;
+    var game_timestamp = data.timestamp;
+    var set_clock = false;
+
+    var events_list, players_list, started_game_timestamp, crr_event, crr_timestamp;
+    console.log(data);
+    update(data)
+
+    // console.log('start new_event ' + gameId);
+
+    socket.on('new_event ' + gameId, data => {
+        // console.log('hey new_event ' + gameId);
+
+        console.log(data);
+        update(data);
+    })
+
+    function update(data) {
+        var game_list_groups_innerHTML = '';
+
+        if (data.events_list.length === 0) {
+            let readied = data.readied;
+
+            // console.log(data)
+
+            game_list_groups_innerHTML = "<div class=\"col-lg-12 mx-auto\">\n" +
+                "<div class=\"card shadow border-0 mb-5\">\n" +
+                "                    <div class=\"card-body p-5\">\n" +
+                "                        <ul class=\"list-group\">";
+
+            game_list_groups_innerHTML +=
+                "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                "    <h2 class=\"h4 text-muted mb-1 alas\">" + 'hey' + "</h2>\n" +
+                " <div class=\"mb-2\"> &nbsp; </div>" +
+                "        <p class=\"h4 small  font-italic mb-4\">" + 'yo' + "</p>\n" +
+                " <div class=\"mb-2\"> &nbsp; </div>" +
+                "</li>";
+
+            if (!readied)
+                game_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-primary\" id=\"readyStateButton\"" +
+                    " onclick=\"readyGame()\"> Sẵn sàng </button>\n";
+            else
+                game_list_groups_innerHTML += "<button type=\"button\" class=\"btn btn-outline-warning\" id= \"readyStateButton\"" +
+                    " onclick=\"unreadyGame()\"> Hủy sẵn sàng </button>\n";
+
+            game_list_groups_innerHTML += "  </ul>\n" +
+                "            </div>\n" +
+                "        </div>" +
+                "</div>\n"
+
+            game_list_groups.innerHTML = game_list_groups_innerHTML;
+        } else {
+            // console.log(data);
+            events_list = data.events_list;
+            players_list = data.players_list;
+            started_game_timestamp = data.timestamp;
+            crr_event = events_list[0];
+            crr_timestamp = crr_event.timestamp;
+            // console.log(crr_timestamp + 365 * 24 * 60 * 60 * 1000, Date.now());
+            let crr_event_group = '';
+
+            // console.log(game_timestamp, crr_timestamp);
+
+            countdown_timer(started_game_timestamp, crr_timestamp, crr_event.type);
+
+            if (!set_clock) {
+
+                document.addEventListener("visibilitychange", function () {
+                    if (document.visibilityState === 'visible') {
+                        countdown_timer(started_game_timestamp, crr_timestamp, crr_event.type);
+                    }
+                });
+
+                set_clock = true;
+            }
+
+            // console.log(players_list);
+
+            if (crr_event.type === 'select') {
+                crr_event_group = "<div class=\"col-lg-12 mx-auto\">\n" +
+                    "<div class=\"card shadow border-0 mb-5\">\n" +
+                    "                    <div class=\"card-body p-5\">\n" +
+                    "                        <ul class=\"list-group\">";
+
+                if (crr_event.selected_player === senderId)
+                    crr_event_group += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                        "<h2 class=\"h4 text-muted mb-1 alas\">" + "Hãy lựa chọn câu hỏi bạn muốn đặt" + "</h2>\n" +
+                        "<\li>";
+                else
+                    crr_event_group += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                        "<h2 class=\"h4 text-muted mb-1 alas\">" + "Đang lựa chọn câu hỏi" + "</h2>\n" +
+                        "<\li>";
+
+                for (let question in crr_event.questions_list) {
+                    let question_text = crr_event.questions_list[question];
+                    crr_event_group +=
+                        "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                        "    <h2 class=\"h4 text-muted mb-1 alas\">" + question_text + "</h2>\n";
+
+                    if (crr_event.selected_player === senderId)
+                        crr_event_group += "<button type=\"button\" class=\"btn btn-outline-primary\" onclick=\"selectQuestion('" + question + "')\"> Chọn </button>\n";
+
+                    crr_event_group += "</li>"
+                }
+
+                crr_event_group += "  </ul>\n" +
+                    "            </div>\n" +
+                    "        </div>" +
+                    "</div>\n"
+            } else if (crr_event.type === 'answer') {
+                // console.log(crr_event);
+                crr_event_group = "<div class=\"col-lg-12 mx-auto\">\n" +
+                    "<div class=\"card shadow border-0 mb-5\">\n" +
+                    "                    <div class=\"card-body p-5\">\n" +
+                    "                        <ul class=\"list-group\">";
+
+                crr_event_group += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">" +
+                    "<h2 class=\"h4 text-muted mb-1 alas\">" + "Câu hỏi : " + crr_event.question[Object.keys(crr_event.question)[0]] + "</h2>\n" +
+                    "<div class=\"mb-2\"> &nbsp; </div>" +
+                    "<p class=\"small text-muted font-italic mb-4\">" + players_list[crr_event.player].nickname + "</p>\n" +
+                    " <div class=\"mb-2\"> &nbsp; </div>" +
+                    "<\li>";
+
+                crr_event_group += "<div class=\"input-group\">\n" +
+                    "  <div class=\"input-group-prepend\">\n" +
+                    "    <span class=\"input-group-text\">Trả lời</span>\n" +
+                    "  </div>\n" +
+                    "  <textarea id='answer' class=\"form-control\" aria-label=\"Answer\" placeholder='Câu trả lời của bạn'></textarea>\n" +
+                    "</div>";
+
+                crr_event_group += "<button type=\"button\" class=\"btn btn-outline-primary btn-block\" id=\"readyStateButton\"" +
+                    " onclick=\"sendAnswer()\"> Gửi câu trả lời </button>\n";
+
+                crr_event_group += "  </ul>\n" +
+                    "            </div>\n" +
+                    "        </div>" +
+                    "</div>\n"
+
+            } else if (crr_event.type === 'vote') {
+
+                crr_event_group = "<div class=\"col-lg-12 mx-auto\">\n" +
+                    "<div class=\"card shadow border-0 mb-5\">\n" +
+                    "                    <div class=\"card-body p-5\">\n" +
+                    "                        <ul class=\"list-group\">";
+                crr_event_group += "<h2 class=\"h4 text-muted mb-1 m-3 p-1 alas\">" + "Vote đi nào ko mất 3 điểm" + "</h2>\n";
+
+                crr_event_group += "<li class=\"list-group-item rounded-0 d-flex align-items-center justify-content-between\">";
+                crr_event_group += "<select id=\"select-nickname\" class=\"form-select form-select-lg mb-3\" aria-label=\".form-select-lg\" onchange='getOptions()'>\n";
+
+                for (let player in players_list) {
+                    let player_data = players_list[player];
+
+                    if (player_data.options.length !== 1 && player !== senderId)
+                        crr_event_group += "  <option value=\"" + player + "\">" + player_data.nickname + "</option>\n";
+                }
+
+                crr_event_group += "  <option value=\"0\" selected> Bỏ lượt </option>\n";
+
+                crr_event_group += "</select>";
+
+                crr_event_group += "<h2 class=\"h4 alas\"> => </h2>\n";
+
+                crr_event_group += "<select id=\"select-realname\" class=\"form-select form-select-lg mb-3\"" +
+                    " aria-label=\".form-select-lg\" ></select>";
+
+                crr_event_group += "<button type=\"button\" class=\"btn btn-outline-primary\" id=\"readyStateButton\"" +
+                    " onclick=\"vote()\"> Vote </button>\n";
+
+                crr_event_group += "</li>";
+
+                crr_event_group += "  </ul>\n" +
+                    "            </div>\n" +
+                    "        </div>" +
+                    "</div>\n"
+            } else if (crr_event.type === 'end') {
+
+                crr_event_group = '';
+                let leaderboard_innerHTML = '';
+
+                leaderboard_innerHTML += "    <div class=\"container\">\n" +
+                    "        <h1>Bảng xếp hạng</h1>\n" +
+                    "        <br>\n" +
+                    "        <br>\n";
+
+                let player1_data = players_list[Object.keys(players_list)[1]];
+
+                leaderboard_innerHTML += "<div class=\"row\">";
+
+                leaderboard_innerHTML += "            <div class=\"col-sm-4\">\n" +
+                    "<div class=\"leaderboard-card\">\n" +
+                    "                    <div class=\"leaderboard-card__top\">";
+
+                leaderboard_innerHTML += "<h3 class=\"text-center\">" +
+                    player1_data.score + "</h3>"
+                    + "</div>";
+
+                leaderboard_innerHTML += "<div class=\"leaderboard-card__body\">\n" +
+                    "                        <div class=\"text-center\">\n" +
+                    "                            <img src=\"img/ok.png\" class=\"circle-img mb-2\" alt=\"User Img\">";
+
+                leaderboard_innerHTML += "<h5 class=\"mb-0\">" + player1_data.nickname + "</h5>\n" +
+                    "                            <p class=\"text-muted mb-0\">" + player1_data.realname + "</p>";
+
+                leaderboard_innerHTML += "<hr>\n" +
+                    "                            <div class=\"d-flex justify-content-between align-items-center\">\n" +
+                    "                                <span>" + player1_data.right_guessed + "</span>\n" +
+                    "                                <span>" + player1_data.wrong_guessed + "</span>\n" +
+                    "                            </div>"
+
+                leaderboard_innerHTML += "</div>\n" +
+                    "                    </div>\n" +
+                    "                </div>\n" +
+                    "            </div>"
+
+
+                let player0_data = players_list[Object.keys(players_list)[0]];
+
+                leaderboard_innerHTML += "            <div class=\"col-sm-4\">\n" +
+                    "                <div class=\"leaderboard-card leaderboard-card--first\">\n" +
+                    "                    <div class=\"leaderboard-card__top\">\n";
+
+                leaderboard_innerHTML += "<h3 class=\"text-center\">" +
+                    player0_data.score + "</h3>"
+                    + "</div>";
+
+                leaderboard_innerHTML += "<div class=\"leaderboard-card__body\">\n" +
+                    "                        <div class=\"text-center\">\n" +
+                    "                            <img src=\"img/ok.png\" class=\"circle-img mb-2\" alt=\"User Img\">";
+
+                leaderboard_innerHTML += "<h5 class=\"mb-0\">" + player0_data.nickname + "</h5>\n" +
+                    "                            <p class=\"text-muted mb-0\">" + player0_data.realname + "</p>";
+
+                leaderboard_innerHTML += "<hr>\n" +
+                    "                            <div class=\"d-flex justify-content-between align-items-center\">\n" +
+                    "                                <span>" + player0_data.right_guessed + "</span>\n" +
+                    "                                <span>" + player0_data.wrong_guessed + "</span>\n" +
+                    "                            </div>"
+
+                leaderboard_innerHTML += "</div>\n" +
+                    "                    </div>\n" +
+                    "                </div>\n" +
+                    "            </div>"
+
+                if (Object.keys(players_list).length > 2) {
+
+                    let player2_data = players_list[Object.keys(players_list)[2]];
+
+                    leaderboard_innerHTML += "            <div class=\"col-sm-4\">\n" +
+                        "<div class=\"leaderboard-card\">\n" +
+                        "                    <div class=\"leaderboard-card__top\">";
+
+                    leaderboard_innerHTML += "<h3 class=\"text-center\">" +
+                        player2_data.score + "</h3>"
+                        + "</div>";
+
+                    leaderboard_innerHTML += "<div class=\"leaderboard-card__body\">\n" +
+                        "                        <div class=\"text-center\">\n" +
+                        "                            <img src=\"img/ok.png\" class=\"circle-img mb-2\" alt=\"User Img\">";
+
+                    leaderboard_innerHTML += "<h5 class=\"mb-0\">" + player2_data.nickname + "</h5>\n" +
+                        "                            <p class=\"text-muted mb-0\">" + player2_data.realname + "</p>";
+
+                    leaderboard_innerHTML += "<hr>\n" +
+                        "                            <div class=\"d-flex justify-content-between align-items-center\">\n" +
+                        "                                <span>" + player2_data.right_guessed + "</span>\n" +
+                        "                                <span>" + player2_data.wrong_guessed + "</span>\n" +
+                        "                            </div>"
+
+                    leaderboard_innerHTML += "</div>\n" +
+                        "                    </div>\n" +
+                        "                </div>\n" +
+                        "            </div>"
+
+                }
+
+                leaderboard_innerHTML += "</div>";
+
+                leaderboard_innerHTML += "        <table class=\"table\">\n" +
+                    "<thead>\n" +
+                    "            <tr>\n" +
+                    "                <th>User</th>\n" +
+                    "                <th>Status</th>\n" +
+                    "                <th>Location</th>\n" +
+                    "                <th>Email</th>\n" +
+                    "                <th>Congratulate</th>\n" +
+                    "            </tr>\n" +
+                    "            </thead>\n" +
+                    "            <tbody>";
+
+                let rank = 0;
+
+                for (let player in players_list) {
+
+                    let player_data = players_list[player];
+
+                    rank++;
+
+                    leaderboard_innerHTML += "<tr>" +
+                        "<td>\n" +
+                        "                    <div class=\"d-flex align-items-center\">\n" +
+                        "                        <img src=\"img/ok.png\" class=\"circle-img circle-img--small mr-2\" alt=\"User Img\">\n" +
+                        "                        <div class=\"user-info__basic\">\n" +
+                        "       <h5 class=\"mb-0\">" + player_data.nickname + "</h5>\n" +
+                        "                            <p class=\"text-muted mb-0\">" + player_data.realname + "</p>\n" +
+                        "                        </div>\n" +
+                        "                    </div>\n" +
+                        "                </td>" +
+                        "<td>\n" +
+                        "                    <div class=\"d-flex align-items-baseline\">\n" +
+                        "                        <h4 class=\"mr-1\">Top &nbsp;</h4><p class=\"text-success\"><i class=\"fa fa-arrow-up\"></i> " + rank + "</p>\n" +
+                        "                    </div>\n" +
+                        "                </td>\n" +
+                        "                <td>" + player_data.right_guessed + "</td>\n" +
+                        "                <td>" + player_data.wrong_guessed + "</td>\n" +
+                        "                <td>\n" +
+                        "                    <button class=\"btn btn-success btn-sm\">" + player_data.score + "</button>\n" +
+                        "                </td>\n" +
+                        "            </tr>";
+                }
+
+                leaderboard_innerHTML += " </tbody>\n" +
+                    "        </table>\n" +
+                    "    </div>\n" +
+                    "</section>" + "</div>";
+
+                document.getElementById('leaderboard').innerHTML = leaderboard_innerHTML;
+                console.log(leaderboard_innerHTML);
+            }
+
+            for (let i = 1; i < events_list.length; i++) {
+                let event_data = events_list[i];
+
+                if (event_data.type === 'answer') {
+                    // console.log(players_list);
+                    game_list_groups_innerHTML += "<div class=\"col-lg-12 mx-auto\">\n" +
+                        "<div class=\"card shadow border-0 mb-5\">\n" +
+                        "                    <div class=\"card-body p-5\">\n" +
+                        "                        <ul class=\"list-group\">";
+
+                    game_list_groups_innerHTML += "<h2 class=\"h4 text-muted mb-1 m-3 p-1 alas\">" + event_data.question[Object.keys(event_data.question)[0]] + "</h2>\n" +
+                        "<div class=\"mb-2\"> &nbsp; </div>" +
+                        "<p class=\"small text-muted font-italic mb-4\">" + "câu hỏi của: " + players_list[event_data.player].nickname + "</p>\n" +
+                        " <div class=\"mb-2\"> &nbsp; </div>";
+
+                    game_list_groups_innerHTML += "<li class=\"row align-items-center justify-content-between\">\n";
+
+                    game_list_groups_innerHTML += "   <div class=\"col-3\">\n" +
+                        "      <div class=\"list-group\" id=\"list-tab\" role=\"tablist\">";
+
+                    for (let player in players_list) {
+                        let player_data = players_list[player];
+                        game_list_groups_innerHTML += "<a class=\"list-group-item list-group-item-action\"\n" +
+                            "                                           id=\"answer-list-" + i.toString() + "-" + player + "-list\"" +
+                            " data-toggle=\"list\" href=\"#list-" + i.toString() + "-" + player + "\" role=\"tab\"\n" +
+                            "                                           aria-controls=\"home\">" + player_data.nickname + "</a>"
+                    }
+
+                    game_list_groups_innerHTML +=
+                        "   </div>" +
+                        "</div>";
+
+                    game_list_groups_innerHTML += " <div class=\"col-9\">\n" +
+                        "                                    <div class=\"tab-content\" id=\"nav-tabContent\">";
+
+                    // console.log(event_data, players_list);
+
+                    for (let player in players_list) {
+                        let player_data = players_list[player];
+                        game_list_groups_innerHTML += "<div class=\"tab-pane fade show\" id=\"list-" + i.toString() + "-" + player + "\" role=\"tabpanel\"\n" +
+                            "                                             aria-labelledby=\"list-home-list\">" + event_data.answers[player] +
+                            "                                        </div>"
+                    }
+
+                    game_list_groups_innerHTML +=
+                        "   </div>" +
+                        "</div>";
+
+
+                    game_list_groups_innerHTML +=
+                        "               </li>" +
+                        "           </ul>" +
+                        "       </div>" +
+                        "   </div>" +
+                        "</div>";
+
+                } else if (event_data.type === 'vote') {
+                    // console.log(players_list);
+                    game_list_groups_innerHTML += "<div class=\"col-lg-12 mx-auto\">\n" +
+                        "<div class=\"card shadow border-0 mb-5\">\n" +
+                        "                    <div class=\"card-body p-5\">\n" +
+                        "                        <ul class=\"list-group\">";
+
+                    for (let player in players_list) {
+
+                        if (!(player in event_data.votes)) continue;
+
+                        game_list_groups_innerHTML += "<li class=\"row align-items-center justify-content-between\">\n";
+
+                        game_list_groups_innerHTML += "<h2 class=\"h4 text-muted mb-1 m-3 p-1 alas\">" + event_data.votes[player].nickname + " bị vote là " + event_data.votes[player].realname + "</h2>\n";
+
+                        if (event_data.votes[player].result)
+                            game_list_groups_innerHTML += "<span class=\"badge badge-pill badge-success\">Success</span>\n";
+                        else
+                            game_list_groups_innerHTML += "<span class=\"badge badge-pill badge-danger\">Danger</span>\n";
+
+                        game_list_groups_innerHTML +=
+                            "               </li>";
+
+                    }
+
+                    game_list_groups_innerHTML +=
+                        "           </ul>" +
+                        "       </div>" +
+                        "   </div>" +
+                        "</div>";
+                }
+
+                // console.log(i);
+                // console.log(game_list_groups_innerHTML);
+
+            }
+
+            game_list_groups.innerHTML = crr_event_group + game_list_groups_innerHTML;
+            // console.log(crr_event_group + game_list_groups_innerHTML);
+
+        }
+    }
+
+    let readyStateButton = document.getElementById('readyStateButton');
+
+    function handlerCallback(response) {
+        switch (response.error) {
+            case 1:
+                alert("Wait what who r u");
+                break;
+            case 2:
+                alert("Bạn đã sẵn sàng rồi");
+                break;
+            case 4:
+                alert("Bạn chưa sẵn sàng sẵn");
+                break;
+            case 3:
+                alert("Phòng này đang trong trận");
+                break;
+            case 0.1:
+                if (readyStateButton.innerText === 'Sẵn sàng') {
+                    readyStateButton.className = "btn btn-outline-warning";
+                    readyStateButton.onclick = unreadyGame;
+                    readyStateButton.innerText = 'Hủy sẵn sàng';
+                } else {
+                    readyStateButton.className = "btn btn-outline-primary";
+                    readyStateButton.onclick = readyGame;
+                    readyStateButton.innerText = 'Sẵn sàng';
+                }
+                alert('Thành công');
+                break;
+            case 0:
+                alert("Thành công");
+                break;
+        }
+    }
+
+    function postRequest(url, data) {
+        var xhr = new XMLHttpRequest();
+
+        function onchange() {
+            if (xhr.readyState === 4) {
+                // console.log(xhr.response);
+                handlerCallback(JSON.parse(xhr.response));
+            }
+        }
+
+        xhr.onreadystatechange = onchange;
+
+        xhr.open("POST", url, true); // true for asynchronous
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            data: data
+        }));
+
+    }
+
+    function readyGame() {
+        postRequest('', {
+            action: 'ready',
+            senderId: senderId,
+            gameId: gameId
+        })
+    }
+
+    function unreadyGame() {
+        postRequest('', {
+            action: 'unready',
+            senderId: senderId,
+            gameId: gameId
+        })
+    }
+
+    function selectQuestion(questionId) {
+        postRequest('', {
+            action: 'select',
+            senderId: senderId,
+            gameId: gameId,
+            questionId: questionId
+        })
+    }
+
+    function sendAnswer() {
+        postRequest('', {
+            action: 'answer',
+            senderId: senderId,
+            gameId: gameId,
+            answer: document.getElementById('answer').value
+        })
+    }
+
+    function vote() {
+        let vote = {};
+
+        vote[document.getElementById('select-nickname').value] = document.getElementById('select-realname').value;
+        postRequest('', {
+            action: 'vote',
+            senderId: senderId,
+            gameId: gameId,
+            vote: vote,
+        })
+    }
+
+    function countdown_timer(game_timestamp, crr_timestamp, crr_event_type) {
+        let grad = new Date(game_timestamp),
+            now = new Date();
+        let time_left = now - (new Date(crr_timestamp)),
+            crr_ms = now.getMilliseconds() - grad.getMilliseconds(),
+            crr_s = now.getSeconds() - grad.getSeconds(),
+            crr_mi = now.getMinutes() - grad.getMinutes(),
+            crr_h = now.getHours() - grad.getHours(),
+            counted = false;
+
+        // console.log(game_timestamp, crr_timestamp);
+
+        let timer;
+        if (crr_event_type === 'select') timer = 45;
+        else if (crr_event_type === 'answer') timer = 105
+        else if (crr_event_type === 'vote') timer = 90;
+        else (timer = 0);
+
+        time_left = timer - Math.floor(time_left / 1000);
+
+        if (crr_ms < 0) {
+            crr_ms += 1000;
+            crr_s -= 1;
+        }
+
+        if (crr_s < 0) {
+            crr_s += 60;
+            crr_mi -= 1;
+        }
+
+        if (crr_mi < 0) {
+            crr_mi += 60;
+            crr_h -= 1;
+        }
+
+        if (crr_h < 0) crr_h += 24;
+
+        let crr = {
+            ms: crr_ms,
+            s: crr_s,
+            mi: crr_mi,
+            h: crr_h
+        };
+
+        function clear(ctx) {
+            ctx.clearRect(0, 0, 80, 80);
+        }
+
+        function setTrack(ctx) {
+            ctx.strokeStyle = "hsla(2, 8%, 46%, 0.45)";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(36, 36, 27, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        function setTime(ctx, until, now, total, type) {
+            ctx.textAlign = "center";
+            ctx.font = "1rem Nunito";
+
+            if (type === "ms") {
+                crr_ms = Math.floor(now - (until % total));
+                if (crr_ms < 0) crr_ms += 1000;
+
+                // console.log(crr_ms, base_ms);
+
+                if (crr_ms > 900 && !counted) {
+                    counted = true;
+
+                    time_left -= 1;
+                    if (time_left < 0) time_left = 0;
+                    crr_s += 1;
+                    if (crr_s === 60) {
+                        crr_s = 0;
+                        crr_mi += 1;
+                        if (crr_mi === 60) {
+                            crr_mi = 0;
+                            crr_h += 1;
+                        }
+                    }
+                }
+
+
+                crr = {
+                    ms: crr_ms,
+                    s: crr_s,
+                    mi: crr_mi,
+                    h: crr_h
+                };
+
+                if (crr_ms < 150 && counted) counted = false;
+                ctx.fillText(time_left, 36, 40);
+                ctx.fillStyle = "#f13057";
+
+
+            } else {
+                // console.log(crr)
+                ctx.fillText(crr[type], 36, 40);
+                ctx.fillStyle = "#0e0303";
+            }
+
+            ctx.strokeStyle = "hsl(2, 8%, 46%)";
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            let circle = true;
+            if (type === "ms") circle = false;
+            ctx.arc(
+                36,
+                36,
+                27,
+                Math.PI / -2,
+                Math.PI * 2 * (-(crr[type] % total) / total) + Math.PI / -2,
+                circle
+            );
+            ctx.stroke();
+        }
+
+        var h = document.getElementById("hours").getContext("2d"),
+            mi = document.getElementById("minutes").getContext("2d"),
+            s = document.getElementById("seconds").getContext("2d"),
+            ms = document.getElementById("milliseconds").getContext("2d"),
+            monthDays = {
+                cache: {},
+                getTotalDaysInMonth: function (year, month) {
+                    if (!this.cache[year]) {
+                        this.cache[year] = {};
+                    }
+                    if (!this.cache[year][month]) {
+                        this.cache[year][month] = new Date(year, month + 1, 0).getDate();
+                    }
+                    return this.cache[year][month];
+                }
+            };
+
+        function set() {
+            var today = new Date();
+            clear(h);
+            setTrack(h);
+            setTime(h, grad.getHours(), today.getHours(), 24, "h");
+
+            clear(mi);
+            setTrack(mi);
+            setTime(mi, grad.getMinutes(), today.getMinutes(), 60, "mi");
+
+            clear(s);
+            setTrack(s);
+            setTime(s, grad.getSeconds(), today.getSeconds(), 60, "s");
+
+            clear(ms);
+            setTrack(ms);
+            setTime(ms, grad.getMilliseconds(), today.getMilliseconds(), 1000, "ms");
+
+            requestAnimationFrame(set)
+        }
+
+        requestAnimationFrame(set)
+    }
+
+
+    function getOptions() {
+        let select_nickname = document.getElementById('select-nickname'), select_nickname_options = '';
+
+        // console.log(players_list);
+
+        if (select_nickname.value !== '0') {
+            for (let option in players_list[select_nickname.value].options) {
+                let realname_option = players_list[select_nickname.value].options[option];
+                select_nickname_options += "<option value=\"" + realname_option + "\">" + realname_option + "</option>\n";
+            }
+        }
+
+        document.getElementById('select-realname').innerHTML = select_nickname_options;
+    }
+
+    function entries(Object) {
+        if (!Object.entries) {
+            Object.entries = function (obj) {
+                var props = Object.keys(obj),
+                    i = props.length,
+                    resArray = new Array(i);
+                while (i--) {
+                    resArray[i] = [ownProps[i], obj[ownProps[i]]];
+                }
+
+                return resArray;
+            };
+        }
+    }
+
 </script>
+<link rel="stylesheet" href="css/countdown_timer.css">
 </body>
 <style>
-    .alas {
-        word-break: break-all;
+    * {
+        word-wrap: break-word;
     }
+
+    ul {
+        list-style-type: none;
+    }
+
 </style>
 </html>

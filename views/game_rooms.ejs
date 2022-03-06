@@ -215,6 +215,15 @@
             case 7:
                 alert("Bạn không có quyền để thực hiện hành động này")
                 break;
+            case 8:
+                alert("Phòng game đã đủ người để tham gia rồi")
+                break;
+            case 9:
+                alert("Bạn đang tham gia game khác đang hoạt động")
+                break;
+            case 10:
+                alert("Nickname hoặc tên thật đã có người sử dụng");
+                break;
             case 0:
                 alert("Thành công");
                 break;
@@ -250,7 +259,7 @@
             id: sender_id
         }
 
-        if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 2) {
+        if (isNaN(data.room_participants_number) || 122 < data.room_participants_number || data.room_participants_number < 3) {
             alert("Số thành viên tham gia phải lớn hơn 4 và bé hơn 122");
             return;
         }
@@ -313,7 +322,7 @@
 </body>
 <style>
     .alas {
-        word-break: break-all;
+        word-wrap: break-word;
     }
 
 </style>

@@ -1,0 +1,14 @@
+html, body {
+  background-color: #262121;
+  height: 100%;
+  padding: 30px;
+}
+
+time {
+  display: block;
+  text-align: center;
+}
+time canvas {
+  width: 100px;
+  height: 100px;
+}

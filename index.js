@@ -1,8 +1,8 @@
 const {initializeApp, applicationDefault, cert} = require('firebase-admin/app');
-const {getFirestore, Timestamp, FieldValue} = require('firebase-admin/firestore');
+const {getFirestore, Timestamp, FieldValue, FieldPath} = require('firebase-admin/firestore');
 const MessengerPlatform = require('facebook-bot-messenger');
 const request = require('request');
-require('dotenv').config()
+// require('dotenv').config()
 
 // Imports
 const express = require('express')
@@ -86,10 +86,9 @@ const io = new Server(server);
 server.listen(process.env.PORT || 3000);
 
 
-io.on('connection', socket => {
-    console.log("New user connected")
-})
-
+// io.on('connection', socket => {
+//     console.log("New user connected")
+// })
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_serviceAccount)
 
@@ -566,7 +565,7 @@ app.post('/ans', (req, res) => {
                         }
                     ]
                 }];
-                sendList(author_id, elements);
+                await sendList(author_id, elements);
 
                 elements = [{
                     "title": 'Bạn đã yêu cầu kết nối với người dùng',
@@ -579,11 +578,15 @@ app.post('/ans', (req, res) => {
                     ]
                 }];
 
-                sendList(senderId, elements);
+                await sendList(senderId, elements);
 
             }
         }
     )();
+})
+
+app.get('/countdown_timer', (req, res) => {
+    res.render('countdown_timer')
 })
 
 function sendList(senderID, elements) {
@@ -868,7 +871,6 @@ app.post('/meeting_rooms', (req, res) => {
 
             res.send({error: 0})
 
-
         }
     )();
 })
@@ -981,35 +983,91 @@ app.post('/game_rooms', (req, res) => {
                     return
                 }
 
+                if (room_data.crr_participants === room_data.participants_number) {
+                    res.send({error: 8});
+                    return
+                }
+
                 if (senderData.data().crr_game_room !== null && senderData.data().crr_game_room !== undefined) {
+                    let crrGame = await db.collection('game_rooms').doc(senderData.data().crr_game_room).get();
+                    if (crrGame.data().crr_participants === crrGame.data().participants_number) {
+                        res.send({error: 9});
+                        return;
+                    }
+
                     await db.collection('game_rooms').doc(senderData.data().crr_game_room).set({
                         crr_participants: FieldValue.increment(-1),
                     }, {merge: true});
                 }
 
+                await ref.set({
+                    crr_participants: FieldValue.increment(1),
+                }, {merge: true});
+
+                params.nickname = params.nickname.trim();
+                params.realname = params.realname.trim();
+
+                let checkName = await db.collection('game_rooms').doc(params.room_id).collection('players')
+                    .where('game_nickname', '==', params.nickname)
+                    .where('game_realname', '==', params.realname).get();
+
+                if (!checkName.empty) {
+                    res.send({error: 10});
+                    return;
+                }
+
+                await userRef.set({
+                    crr_game_room: params.room_id,
+                    game_nickname: params.nickname,
+                    game_realname: params.realname
+                }, {merge: true})
+
                 if (room_data.crr_participants === room_data.participants_number - 1) {
 
-                    await db.collection('games').add({
-                        name: room_data.name,
-                        description: room_data.description,
-                        player_number: room_data.participants_number,
-                        ready_player: 0,
-                        timestamp: Date.now(),
-                    })
+                    let roomPlayerCollection = await db.collection('users')
+                        .where('crr_game_room', '==', params.room_id)
+                        .get();
 
-                    await ref.delete()
+                    let realnames_list = [];
 
-                } else {
+                    roomPlayerCollection.forEach(player => {
+                        // console.log(quest.id, '=>', quest.data());
+                        (async () => {
+                            let elements = [{
+                                "title": 'Phòng game của bạn đã bắt đầu',
+                                "buttons": [
+                                    {
+                                        'type': 'web_url',
+                                        'url': 'http://lqdchatventure-web.herokuapp.com/game' +
+                                            '?id=' + senderMaskId + '&game_id=' + params.room_id,
+                                        'webview_height_ratio': 'full',
+                                    }
+                                ]
+                            }];
 
-                    await ref.set({
-                        crr_participants: FieldValue.increment(1),
-                    }, {merge: true});
+                            await sendList(player.id, elements)
 
-                    await userRef.set({
-                        crr_game_room: params.room_id,
-                        game_nickname: params.nickname,
-                        game_realname: params.realname
-                    }, {merge: true})
+                            realnames_list.push(player.data().game_realname);
+                        })();
+                    });
+
+                    let id = 0;
+
+                    roomPlayerCollection.forEach(player => {
+                        // console.log(quest.id, '=>', quest.data());
+                        (async () => {
+                            await db.collection('game_rooms').doc(params.room_id)
+                                .collection('players').doc(player.data().mask_id).set({
+                                    nickname: player.data().game_nickname,
+                                    realname: player.data().game_realname,
+                                    options: realnames_list,
+                                    selected: false,
+                                    right_guessed: 0,
+                                    wrong_guessed: 0,
+                                    id: player.id
+                                }, {merge: true});
+                        })();
+                    });
 
                 }
 
@@ -1077,19 +1135,13 @@ app.post('/game_rooms', (req, res) => {
                     })();
                 });
 
-                await userRef.set({
-                    crr_game_room: null,
-                    game_nickname: null,
-                    game_realname: null
-                }, {merge: true})
-
                 await db.collection('game_rooms').doc(params.room_id).delete()
 
                 res.send({error: 0})
                 return;
             }
 
-            if (isNaN(params.room_participants_number) || 122 < params.room_participants_number || params.room_participants_number < 2) {
+            if (isNaN(params.room_participants_number) || 22 < params.room_participants_number || params.room_participants_number < 3) {
                 res.send({error: 3})
                 return
             }
@@ -1102,7 +1154,13 @@ app.post('/game_rooms', (req, res) => {
                 author_nickname: senderData.data().nickname,
                 timestamp: Date.now(),
                 password: params.room_password,
-                crr_participants: 0
+                crr_participants: 0,
+                guessed_players: 0,
+                selected_quests: [],
+                selected_players: [],
+                last_event: null,
+                last_event_type: null,
+                end: false
             })
 
             res.send({error: 0})
@@ -1114,9 +1172,266 @@ app.post('/game_rooms', (req, res) => {
 // Navigation
 app.get('/game', (req, res) => {
     (async () => {
-        res.render('game')
+        let senderMaskId = req.query.id;
+        let gameId = req.query.game_id;
+
+        if (senderMaskId === undefined || gameId === undefined) {
+            console.log('nope')
+            res.send("Wha");
+            return;
+        }
+
+        let userRef = db.collection('global_vars').doc('masks').collection('users').doc(senderMaskId);
+        let doc = await userRef.get();
+
+        // console.log("hey", doc.data());
+
+        if (!doc.exists) {
+            console.log("User not found");
+            res.send('really?')
+            return 0;
+        }
+
+        let roomDoc = await db.collection('game_rooms').doc(gameId).get();
+
+        if (!roomDoc.exists) {
+            console.log("room not found");
+            res.send('really?')
+            return 0;
+        }
+
+        if (roomDoc.data().crr_participants !== roomDoc.data().participants_number) {
+            res.send('room not yet started');
+            return 0;
+        }
+
+        let game_timestamp = roomDoc.data().game_started_timestamp === undefined
+            ? 0 : roomDoc.data().game_started_timestamp;
+
+        console.log(game_timestamp);
+
+        let senderId = doc.data().id;
+
+        userRef = db.collection('users').doc(senderId);
+        let senderData = await userRef.get();
+
+        if (senderData.data().crr_game_room !== gameId) {
+            res.send('u r not a player');
+            return 0;
+        }
+
+        let eventsSnapShot = await db.collection('game_rooms').doc(gameId)
+            .collection('events').orderBy('timestamp', 'desc').get();
+
+        let events_list = [];
+        eventsSnapShot.forEach(event => {
+            // console.log(quest.id, '=>', quest.data());
+            let eventData = event.data();
+            events_list.push(eventData);
+        });
+
+        let playersSnapShot;
+
+        if (roomDoc.data().last_event_type !== 'end')
+            playersSnapShot = await db.collection('game_rooms').doc(gameId)
+                .collection('players').get();
+        else
+            playersSnapShot = await db.collection('game_rooms').doc(gameId)
+                .collection('players').orderBy('score', 'desc').get();
+
+        let players_list = {}
+        let readied = false;
+        playersSnapShot.forEach(player => {
+            // console.log(player.id, '=>', player.data());
+            let playerData = player.data();
+            if (player.id === senderMaskId) readied = playerData.readied;
+            players_list[player.id] = playerData;
+        });
+
+        console.log(events_list, players_list);
+
+        res.render('game', {
+            data: JSON.stringify({
+                    events_list: events_list,
+                    players_list: players_list,
+                    readied: readied,
+                    guessed: false,
+                    score: 0,
+                    game_id: gameId,
+                    sender_id: senderMaskId,
+                    timestamp: game_timestamp,
+                }
+            )
+        })
+
     })();
-})
+});
+
+app.post('/game', (req, res) => {
+    (async () => {
+
+        let params = req.body.data;
+        let action = params.action;
+        let senderMaskId = params.senderId;
+        let gameId = params.gameId;
+
+        if (senderMaskId === undefined) {
+            console.log('nope')
+            res.send({error: 1})
+            return 0;
+        }
+
+        let userRef = db.collection('global_vars').doc('masks')
+            .collection('users').doc(senderMaskId);
+        let doc = await userRef.get();
+
+        // console.log("hey", doc.data());
+
+        if (!doc.exists) {
+            console.log("User not found");
+            res.send({error: 1})
+            return 0;
+        }
+
+        let senderId = doc.data().id;
+
+        userRef = db.collection('users').doc(senderId);
+        let senderData = await userRef.get();
+
+        if (senderData.data().crr_game_room !== gameId) {
+            res.send('u r not a player');
+            return 0;
+        }
+
+        if (action === 'ready') {
+
+            let userDoc = await db.collection('game_rooms').doc(gameId)
+                .collection('players').doc(senderMaskId).get()
+
+            if (userDoc.exists && userDoc.data().readied === true) {
+                res.send({error: 2});
+                return 0;
+            }
+
+            let roomData = (await db.collection('game_rooms').doc(gameId).get()).data()
+
+            if (roomData.crr_participants === roomData.readied_players) {
+                res.send({error: 3});
+                return 0;
+            }
+
+            await db.collection('game_rooms').doc(gameId).set({
+                readied_players: FieldValue.increment(1)
+            }, {merge: true});
+
+            roomData.readied_players += 1;
+
+            await db.collection('game_rooms').doc(gameId)
+                .collection('players').doc(senderMaskId).set({
+                    readied: true
+                }, {merge: true});
+
+            if (roomData.readied_players === roomData.participants_number) {
+
+                let game_started_timestamp = Date.now()
+                await db.collection('game_rooms').doc(gameId).set({
+                    game_started_timestamp: game_started_timestamp
+                }, {merge: true});
+
+                console.log("hey1", game_started_timestamp);
+
+                await updateGame(gameId, 'time', game_started_timestamp);
+
+                res.send({error: -1});
+            } else {
+                res.send({error: 0.1});
+            }
+        } else if (action === 'unready') {
+
+            let userDoc = await db.collection('game_rooms').doc(gameId)
+                .collection('players').doc(senderMaskId).get()
+
+            if (!userDoc.exists || userDoc.data().readied === false) {
+                res.send({error: 4});
+                return 0;
+            }
+
+            let roomData = (await db.collection('game_rooms').doc(gameId).get()).data()
+
+            if (roomData.crr_participants === roomData.readied_players) {
+                res.send({error: 3});
+                return 0;
+            }
+
+            await db.collection('game_rooms').doc(gameId).set({
+                readied_players: FieldValue.increment(-1)
+            }, {merge: true});
+
+            await db.collection('game_rooms').doc(gameId)
+                .collection('players').doc(senderMaskId).set({
+                    readied: false
+                }, {merge: true});
+
+            res.send({error: 0.1})
+
+        } else if (action === 'select') {
+            let game_data = (await db.collection('game_rooms').doc(gameId).get()).data()
+            let last_event_data = (await db.collection('game_rooms').doc(gameId)
+                .collection('events').doc(game_data.last_event).get()).data()
+
+            let selected_quest = {};
+            selected_quest[params.questionId] = last_event_data.questions_list[params.questionId]
+            await db.collection('game_rooms').doc(gameId)
+                .collection('events').doc(game_data.last_event).update({
+                    selected_quest: selected_quest
+                });
+
+            // await updateGame(params.gameId);
+            res.send({error: 0});
+        } else if (action === 'answer') {
+            let game_data = (await db.collection('game_rooms').doc(gameId).get()).data();
+            let last_event_data = (await db.collection('game_rooms').doc(gameId)
+                .collection('events').doc(game_data.last_event).get()).data();
+
+            let new_answer = last_event_data.answers;
+            new_answer[senderMaskId] = params.answer;
+            await db.collection('game_rooms').doc(gameId)
+                .collection('events').doc(game_data.last_event).set({
+                    answers: new_answer
+                }, {merge: true});
+
+            // await updateGame(params.gameId);
+            res.send({error: 0});
+        } else if (action === 'vote') {
+            let game_data = (await db.collection('game_rooms').doc(gameId).get()).data();
+            let last_event_data = (await db.collection('game_rooms').doc(gameId)
+                .collection('events').doc(game_data.last_event).get()).data();
+
+            let voted_player_data = (await db.collection('game_rooms').doc(gameId)
+                .collection('players').doc(Object.keys(params.vote)[0]).get()).data();
+
+            let new_vote = last_event_data.votes;
+
+            //Nếu vote bỏ lượt
+            if (voted_player_data !== undefined) {
+                new_vote[senderMaskId] = {
+                    nickname: voted_player_data.nickname,
+                    realname: params.vote[Object.keys(params.vote)[0]],
+                    id: Object.keys(params.vote)[0],
+                    result: voted_player_data.realname === params.vote[Object.keys(params.vote)[0]]
+                };
+
+                await db.collection('game_rooms').doc(gameId)
+                    .collection('events').doc(game_data.last_event).set({
+                        votes: new_vote
+                    }, {merge: true});
+            }
+
+            // await updateGame(params.gameId);
+            res.send({error: 0});
+        }
+    })();
+});
 
 async function sendQuickReply(senderId, text) {
     try {
@@ -1245,4 +1560,331 @@ async function joinInRoom(senderId, gettedId) {
     await bot.sendTextMessage(senderId, 'Bạn đã được kết nối. Nói lời chào với người bạn mới đi nào');
     await bot.sendTextMessage(gettedId, 'Bạn đã được kết nối. Nói lời chào với người bạn mới đi nào');
 
+}
+
+
+async function updateGame(gameId, option, param) {
+
+    // console.log("hey2", game_started_timestamp);
+
+    let events_list_collection = await db.collection('game_rooms').doc(gameId)
+        .collection('events').orderBy('timestamp', 'desc').get();
+    let game_data = (await db.collection('game_rooms').doc(gameId).get()).data();
+    let game_timestamp;
+
+    if (option === 'time') game_timestamp = param;
+    else game_timestamp = game_data.game_started_timestamp;
+
+    // console.log("hey3", game_timestamp);
+
+    let crr_timestamp = Date.now();
+
+    let players_list = {}, events_list = [];
+
+    if (option === 'end') {
+
+        let players_list_collection = await db.collection('game_rooms').doc(gameId)
+            .collection('players').orderBy('score', 'desc').get();
+
+        players_list_collection.forEach(player => {
+            players_list[player.id] = player.data();
+        });
+
+        events_list_collection.forEach(event => {
+            events_list.push(event.data());
+        });
+
+        console.log('end');
+
+        let new_event = {
+            type: 'end',
+            timestamp: Date.now()
+        };
+
+        events_list.unshift(new_event)
+
+        let new_event_doc = await db.collection('game_rooms').doc(gameId)
+            .collection('events').add(new_event);
+
+        await db.collection('game_rooms').doc(gameId).set({
+            last_event: new_event_doc.id,
+            last_event_type: 'vote'
+        }, {merge: true});
+
+        io.sockets.emit('new_event ' + gameId, {
+            events_list: events_list,
+            players_list: players_list,
+            timestamp: game_timestamp
+        });
+
+        let players = await db.collection('game_rooms').doc(gameId).collection('players').get();
+
+        players.forEach(player => {
+            (async () => {
+                await db.collection('users').doc(player.id).set({
+                    crr_game_room: null
+                }, {merge: true})
+            })();
+        });
+
+        setTimeout(() => {
+            (async () => {
+                await db.collection('game_rooms').doc(gameId).delete();
+            })();
+        }, 5 * 60 * 1000)
+
+        return;
+    }
+
+    let players_list_collection = await db.collection('game_rooms').doc(gameId)
+        .collection('players').get();
+
+    // console.log(events_list_collection.length);
+
+    if (game_data.last_event === null || game_data.last_event_type === 'vote') {
+
+        let not_selected_players_list = [];
+
+        players_list_collection.forEach(player => {
+
+            players_list[player.id] = player.data();
+
+            if (game_data.selected_players.includes(player.id)) return;
+
+            not_selected_players_list.push(player.id);
+        });
+
+        // console.log(not_selected_players_list);
+
+        events_list_collection.forEach(event => {
+            events_list.push(event.data());
+        });
+
+        if (events_list.length !== 0) {
+            let end = false;
+            let last_event_data = (await db.collection('game_rooms').doc(gameId)
+                .collection('events').doc(game_data.last_event).get()).data();
+
+            if (Object.keys(last_event_data.votes).length === 0) {
+                await updateGame(gameId, 'end');
+                return;
+            }
+
+            let players_list = (await db.collection('game_rooms').doc(gameId)
+                .collection('players').get());
+
+            players_list.forEach((player) => {
+                (async () => {
+                    if (!(player.id in last_event_data.votes)) {
+                        await db.collection('game_rooms').doc(gameId)
+                            .collection('players').doc(player.id).set({
+                                score: FieldValue.increment(-3)
+                            }, {merge: true})
+                    } else {
+
+                        let guessed = false;
+
+                        if (!last_event_data.votes[player.id].result) {
+
+                            let voted_player_data = (await db.collection('game_rooms').doc(gameId)
+                                .collection('players').doc(last_event_data.votes[player.id].id).get()).data();
+
+                            await db.collection('game_rooms').doc(gameId)
+                                .collection('players').doc(player.id).set({
+                                    score: FieldValue.increment(-2),
+                                    wrong_guessed: FieldValue.increment(1)
+                                }, {merge: true})
+
+                            if (voted_player_data.options.length === 2) {
+                                guessed = true;
+                            }
+
+                        } else {
+
+                            await db.collection('game_rooms').doc(gameId)
+                                .collection('players').doc(player.id).set({
+                                    score: FieldValue.increment(3),
+                                    right_guessed: FieldValue.increment(1)
+                                }, {merge: true})
+
+                            guessed = true;
+
+                        }
+
+                        await db.collection('game_rooms').doc(gameId)
+                            .collection('players').doc(last_event_data.votes[player.id].id).set({
+                                score: FieldValue.increment(1),
+                                guessed: guessed,
+                                options: FieldValue.arrayRemove(last_event_data.votes[player.id].realname)
+                            }, {merge: true});
+
+                        if (guessed === true) {
+                            await db.collection('game_rooms').doc(gameId).set({
+                                guessed_players: FieldValue.increment(1)
+                            }, {merge: true})
+
+                            if (game_data.crr_participants <= game_data.guessed_players + 3) {
+                                if (!end) {
+                                    await updateGame(gameId, 'end');
+                                    end = true;
+                                }
+                            }
+                        }
+                    }
+                })();
+            });
+            if (end) return;
+        }
+
+        let qa = await db.collection('global_vars').doc('qa').get();
+
+        let selected_quests_list = game_data.selected_quests;
+        let id_quests_list = [];
+        let quests_list = {};
+        let random_question;
+        let not_selected_quests_list = [];
+
+        for (let i = 0; i < qa.data().questions_count; i++) {
+            if (i in selected_quests_list) continue;
+            not_selected_quests_list.push(i);
+        }
+
+        for (let i = 0; i < 5; i++) {
+            if (not_selected_quests_list.length === 0) {
+                await updateGame(gameId, 'end');
+                return;
+            }
+
+            random_question = not_selected_quests_list[
+                Math.floor(Math.random() * not_selected_quests_list.length)];
+
+            id_quests_list.push(random_question);
+
+            not_selected_quests_list.splice(not_selected_quests_list.indexOf(random_question), 1);
+        }
+
+        let random_question_snapshot = await db.collection('questions')
+            .where('random_id', 'in', id_quests_list).get();
+
+        random_question_snapshot.forEach((question) => {
+            (async () => {
+                quests_list[question.data().random_id] = question.data().text;
+            })();
+        });
+
+        if (quests_list.length === 0) return;
+
+        let random_selected_player = not_selected_players_list[Math.floor(Math.random() * not_selected_players_list.length)];
+
+        let default_selected_quest = {};
+        default_selected_quest[Object.keys(quests_list)[0]] = quests_list[Object.keys(quests_list)[0]];
+
+        let new_event = {
+            questions_list: quests_list,
+            selected_player: random_selected_player,
+            selected_quest: default_selected_quest,
+            type: 'select',
+            timestamp: crr_timestamp
+        };
+
+        events_list.unshift(new_event);
+
+        let new_event_doc = await db.collection('game_rooms').doc(gameId)
+            .collection('events').add(new_event);
+
+        await db.collection('game_rooms').doc(gameId).set({
+            last_event: new_event_doc.id,
+            last_event_type: 'select',
+            selected_players: FieldValue.arrayUnion(random_selected_player),
+        }, {merge: true});
+
+        setTimeout(async () => {
+            await updateGame(gameId);
+        }, 45 * 1000)
+
+    } else if (game_data.last_event_type === 'select') {
+
+        let last_event_data = (await db.collection('game_rooms').doc(gameId)
+            .collection('events').doc(game_data.last_event).get()).data();
+
+        if (game_data.selected_players.length === game_data.crr_participants) {
+            game_data.selected_players = [];
+        }
+
+
+        players_list_collection.forEach(player => {
+            players_list[player.id] = player.data();
+        });
+
+        events_list_collection.forEach(event => {
+            events_list.push(event.data());
+        });
+
+        let new_event = {
+            type: 'answer',
+            question: last_event_data.selected_quest,
+            player: last_event_data.selected_player,
+            answers: {},
+            timestamp: crr_timestamp
+        };
+
+        events_list.unshift(new_event);
+
+        let new_event_doc = await db.collection('game_rooms').doc(gameId)
+            .collection('events').add(new_event);
+
+        await db.collection('game_rooms').doc(gameId).set({
+            selected_players: game_data.selected_players,
+            selected_quests: FieldValue.arrayUnion(last_event_data.selected_quest),
+            last_event: new_event_doc.id,
+            last_event_type: 'answer',
+        }, {merge: true});
+
+        etTimeout(async () => {
+            await updateGame(gameId);
+        }, 105 * 1000)
+
+    } else if (game_data.last_event_type === 'answer') {
+
+        players_list_collection.forEach(player => {
+            players_list[player.id] = player.data();
+        });
+
+        events_list_collection.forEach(event => {
+            events_list.push(event.data());
+        });
+
+        let new_event = {
+            type: 'vote',
+            votes: {},
+            timestamp: crr_timestamp
+        };
+
+        events_list.unshift(new_event);
+
+        let new_event_doc = await db.collection('game_rooms').doc(gameId)
+            .collection('events').add(new_event);
+
+        await db.collection('game_rooms').doc(gameId).set({
+            last_event: new_event_doc.id,
+            last_event_type: 'vote'
+        }, {merge: true});
+
+        setTimeout(async () => {
+            await updateGame(gameId);
+        }, 90 * 1000)
+
+    }
+
+    // console.log('new_event ' + gameId);
+    io.sockets.emit('new_event ' + gameId, {
+        events_list: events_list,
+        players_list: players_list,
+        timestamp: game_timestamp
+    });
+
+    // io.sockets.emit('new_event', {
+    //     events_list: events_list,
+    //     players_list: players_list,
+    // });
 }
